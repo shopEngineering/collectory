@@ -276,8 +276,11 @@ are always served (so the PIN screen can load); `/api/*` (except health/auth) an
 ## 5. Built-in templates
 
 Authored by the orchestrator in `server/templates/*.json` after domain research:
-`firearms.json`, `ammunition.json`, `knives.json`, `coins.json`, `stamps.json`, plus `generic.json`
-(minimal starter). Format: `{key, name, icon, color, description, fields: FieldDef[], logTypes: LogTypeDef[]}`.
+`firearms.json`, `ammunition.json`, `accessories.json`, `parts.json`, `knives.json`, `coins.json`,
+`stamps.json`, plus `generic.json` (minimal starter). Accessories & Parts (v1.0.3) carry
+`item_refs`/`item_ref` fields with `refTemplate: 'firearms'` so they link to the guns they fit or
+are installed on (surfaced via `/api/items/:id/related`, per §5.2). Magazines are NOT a template —
+they are child records of firearms (§5.2). Format: `{key, name, icon, color, description, fields: FieldDef[], logTypes: LogTypeDef[]}`.
 Backend loads/validates these at startup and serves via `GET /api/templates`. Highlights:
 firearms gets `range_session` (roundsFired, ammoItemId picker via `type:'ammo_ref'`… **no** — spec
 decision: `ammoItemId` is a special-cased field rendered by the client for `range_session` logs in

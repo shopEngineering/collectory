@@ -14,6 +14,15 @@
 - **CI lessons encoded in release.yml:** Node 22 (better-sqlite3 v12 has no Node 20 prebuilds) +
   setuptools; single macos-14 runner cross-building arm64+x64 (macos-13 Intel runners are retired
   and queue forever).
+- **Display rename → "The Collectory" (v1.0.2):** all user-facing strings; data folder pinned to
+  `Collectory` via `app.setPath` (no orphaning); bundle id / backup format id unchanged.
+- **v1.0.3 — public + updates + growth:** repo made public; `electron/updater.js` +
+  "Check for Updates…" menu item + silent launch check (notify + one-click DMG download via the
+  public Releases API; matches this Mac's arch); **Accessories & Parts** built-in templates
+  (`item_refs`/`item_ref` → firearms, so a gun's Related panel shows what fits/installs on it);
+  version-independent DMG artifact names (`Collectory-arm64.dmg`) so `/releases/latest/download/`
+  links are stable; GitHub Pages download page (`web/index.html` via `.github/workflows/pages.yml`,
+  live at shopengineering.github.io/collectory). Backend suite 41/41 throughout.
 
 Built in a single orchestrated multi-agent session (3 research + 3 implementation agents + fable
 orchestrator). Everything below is implemented and verified.
