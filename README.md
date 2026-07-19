@@ -42,11 +42,15 @@ machine unless you export them.
 1. Download the latest `Collectory-*.dmg` from [Releases](../../releases) (arm64 for Apple
    Silicon, x64 for Intel).
 2. Open the DMG and drag **The Collectory** to Applications.
-3. First launch — the app is not notarized, so macOS will block it once:
-   - Launch it, dismiss the dialog, then open **System Settings → Privacy & Security**, scroll to
-     the *"The Collectory" was blocked* notice and click **Open Anyway** (asks for your password), or
-   - In Terminal: `xattr -cr "/Applications/The Collectory.app"` and launch normally.
-   This is needed once per version.
+3. First launch — because the app isn't notarized yet, macOS blocks apps downloaded from outside
+   the App Store. On Apple Silicon it usually says **"The Collectory" is damaged and can't be
+   opened.** It is *not* damaged — that's just Gatekeeper. Drag the app into **Applications**, then
+   open **Terminal** (Applications → Utilities), run the line below, and open the app normally:
+   ```
+   xattr -cr "/Applications/The Collectory.app"
+   ```
+   (Some Intel Macs instead offer **System Settings → Privacy & Security → Open Anyway**.)
+   Needed once per version — and not at all once the app is notarized.
 
 Your data lives in `~/Library/Application Support/Collectory/` (database, images, attachments,
 automatic backups; the folder keeps its original name). Copy that folder — or use

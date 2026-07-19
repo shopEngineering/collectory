@@ -141,9 +141,11 @@ a{color:inherit}
 
       <div class="aside">
         <h2>Opening it the first time</h2>
-        <p>The app isn&rsquo;t notarized yet, so macOS blocks it once. Open it, dismiss the dialog,
-          then go to <b>System Settings &rarr; Privacy &amp; Security</b> and click
-          <b>Open Anyway</b>. Or run this in Terminal:</p>
+        <p>Because it isn&rsquo;t notarized yet, macOS may say the app is
+          <b>&ldquo;damaged&rdquo;</b> the first time. It isn&rsquo;t &mdash; that&rsquo;s just
+          macOS blocking an app from outside the App Store. Drag the app into <b>Applications</b>,
+          then open <b>Terminal</b> (Applications &rarr; Utilities), paste the line below, and open
+          the app normally. One time only.</p>
         <div class="cmd">xattr -cr &quot;/Applications/The Collectory.app&quot;</div>
       </div>
     </section>
