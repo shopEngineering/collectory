@@ -28,8 +28,13 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+
+      # node-gyp needs distutils if any native dep falls back to a source build
+      # (better-sqlite3 v12 has no Node 20 prebuilds; Node 22+ is covered, this is insurance).
+      - name: Ensure Python setuptools for node-gyp
+        run: python3 -m pip install --break-system-packages setuptools || pip3 install setuptools
 
       - name: Install root dependencies
         run: npm ci
