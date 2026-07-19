@@ -58,7 +58,7 @@ export function PinScreen({ onSuccess }: { onSuccess: () => void }) {
         <div className="pin-mark">
           <Icon name="lock" size={26} />
         </div>
-        <h1 className="serif">Collectory</h1>
+        <h1 className="serif">The Collectory</h1>
         <p className="pin-sub">Enter your access PIN</p>
 
         <div className={`pin-dots ${error ? 'shake' : ''}`}>

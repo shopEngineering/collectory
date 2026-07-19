@@ -408,7 +408,7 @@ export function SettingsPage() {
         <div className="eyebrow" style={{ marginBottom: 'var(--sp-3)' }}>About</div>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div className="serif" style={{ fontSize: 16 }}>Collectory</div>
+            <div className="serif" style={{ fontSize: 16 }}>The Collectory</div>
             <div className="field-help">Version {settings.version}</div>
           </div>
         </div>

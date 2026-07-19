@@ -1,7 +1,7 @@
 {
   "name": "collectory",
-  "productName": "Collectory",
-  "version": "1.0.1",
+  "productName": "The Collectory",
+  "version": "1.0.2",
   "description": "Local-first collection manager for firearms, ammunition, knives, coins, stamps, and anything else you collect. No servers, no cloud, no telemetry.",
   "main": "electron/main.js",
   "license": "MIT",
@@ -37,7 +37,8 @@
   },
   "build": {
     "appId": "com.collectory.app",
-    "productName": "Collectory",
+    "productName": "The Collectory",
+    "artifactName": "Collectory-${version}-${arch}.${ext}",
     "directories": { "buildResources": "build", "output": "release" },
     "files": [
       "electron/**",
@@ -58,7 +59,7 @@
       "darkModeSupport": true
     },
     "dmg": {
-      "title": "Collectory",
+      "title": "The Collectory",
       "iconSize": 100,
       "contents": [
         { "x": 130, "y": 220 },

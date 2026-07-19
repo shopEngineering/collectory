@@ -73,7 +73,7 @@ function validateRestoreZip(zipPath) {
   }
   const entries = zip.getEntries();
   const names = new Set(entries.map((e) => e.entryName));
-  if (!names.has('meta.json')) return { ok: false, message: 'missing meta.json — not a Collectory backup' };
+  if (!names.has('meta.json')) return { ok: false, message: 'missing meta.json — not a valid backup file' };
   if (!names.has('collectory.db')) return { ok: false, message: 'missing collectory.db in backup' };
   let meta;
   try {

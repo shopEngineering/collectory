@@ -141,9 +141,9 @@ function createApp(dataDir) {
       .status(200)
       .type('html')
       .send(
-        `<!doctype html><meta charset="utf-8"><title>Collectory</title>
+        `<!doctype html><meta charset="utf-8"><title>The Collectory</title>
          <div style="font-family:system-ui;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#333">
-           <h1>Collectory</h1>
+           <h1>The Collectory</h1>
            <p>The server is running, but the client has not been built yet.</p>
            <p>Run <code>npm run build</code> to build the web client, then reload.</p>
            <p>The API is live at <code>/api/health</code>.</p>

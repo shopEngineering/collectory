@@ -1,6 +1,6 @@
 {
-  "name": "Collectory",
-  "short_name": "Collectory",
+  "name": "The Collectory",
+  "short_name": "The Collectory",
   "description": "Local-first collection manager. No servers, no cloud, no telemetry.",
   "display": "standalone",
   "start_url": "/",

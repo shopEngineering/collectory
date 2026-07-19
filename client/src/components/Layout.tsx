@@ -47,7 +47,7 @@ export function Layout({ children, onOpenSearch, onNewCollection, title }: Layou
             <span className="brand-mark">
               <Icon name="archive" size={18} />
             </span>
-            Collectory
+            The Collectory
           </div>
         </div>
 

@@ -3,8 +3,15 @@
 const path = require('path');
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 
+// Keep the data directory named "Collectory" regardless of the display name
+// ("The Collectory" productName). This decouples the on-disk store from the
+// brand: it stays in sync with the headless server (server/index.js) and a
+// rename never orphans an existing user's data. Must run before userData is
+// first used (single-instance lock, bootstrap).
+app.setPath('userData', path.join(app.getPath('appData'), 'Collectory'));
+
 // ---------------------------------------------------------------------------
-// Single-instance lock. If another Collectory is already running, focus it and
+// Single-instance lock. If another instance is already running, focus it and
 // bail out of this process immediately.
 // ---------------------------------------------------------------------------
 const gotTheLock = app.requestSingleInstanceLock();
@@ -153,9 +160,9 @@ function buildMenu() {
     ...(isMac
       ? [
           {
-            label: 'Collectory',
+            label: 'The Collectory',
             submenu: [
-              { role: 'about', label: 'About Collectory' },
+              { role: 'about', label: 'About The Collectory' },
               { type: 'separator' },
               {
                 label: 'Settings…',
@@ -165,11 +172,11 @@ function buildMenu() {
               { type: 'separator' },
               { role: 'services' },
               { type: 'separator' },
-              { role: 'hide', label: 'Hide Collectory' },
+              { role: 'hide', label: 'Hide The Collectory' },
               { role: 'hideOthers' },
               { role: 'unhide' },
               { type: 'separator' },
-              { role: 'quit', label: 'Quit Collectory' },
+              { role: 'quit', label: 'Quit The Collectory' },
             ],
           },
         ]
@@ -251,7 +258,7 @@ function errorPageUrl(err, dataDir) {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Collectory — Startup Error</title>
+<title>The Collectory — Startup Error</title>
 <style>
   :root { color-scheme: dark; }
   html, body { height: 100%; margin: 0; }
@@ -289,7 +296,7 @@ function errorPageUrl(err, dataDir) {
 </head>
 <body>
   <div class="card">
-    <span class="badge">Collectory</span>
+    <span class="badge">The Collectory</span>
     <h1>The app couldn't start its data engine</h1>
     <p class="sub">The embedded server failed to launch. Your data is untouched. The details below help diagnose the issue.</p>
     <pre>${escapeHtml(message)}</pre>

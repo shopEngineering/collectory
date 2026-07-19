@@ -1,8 +1,8 @@
-# Collectory
+# The Collectory
 
 **Your collections. Your machine. Nobody else's business.**
 
-Collectory is a local-first collection manager for firearms, ammunition, knives, coins, stamps —
+The Collectory is a local-first collection manager for firearms, ammunition, knives, coins, stamps —
 and any custom collection you define. Everything lives in a SQLite database and an image library on
 your own Mac. **No servers, no cloud, no accounts, no telemetry.** Your records never leave your
 machine unless you export them.
@@ -16,7 +16,7 @@ machine unless you export them.
   collections. Every field of every collection is editable: add, remove, reorder, re-type.
 - **Activity logs with photos** — range sessions (with target photos), cleaning, modifications,
   sharpening, grading submissions, appraisals, or your own log types.
-- **The range loop** — log a range session on a firearm, pick the ammo used, and Collectory
+- **The range loop** — log a range session on a firearm, pick the ammo used, and The Collectory
   deducts the rounds from your ammo inventory, updates the gun's lifetime round count (always
   computed from logs — it can't drift), tracks rounds since last cleaning, and warns when ammo
   stock runs low.
@@ -41,15 +41,16 @@ machine unless you export them.
 
 1. Download the latest `Collectory-*.dmg` from [Releases](../../releases) (arm64 for Apple
    Silicon, x64 for Intel).
-2. Open the DMG and drag **Collectory** to Applications.
+2. Open the DMG and drag **The Collectory** to Applications.
 3. First launch — the app is not notarized, so macOS will block it once:
    - Launch it, dismiss the dialog, then open **System Settings → Privacy & Security**, scroll to
-     the *"Collectory" was blocked* notice and click **Open Anyway** (asks for your password), or
-   - In Terminal: `xattr -cr /Applications/Collectory.app` and launch normally.
+     the *"The Collectory" was blocked* notice and click **Open Anyway** (asks for your password), or
+   - In Terminal: `xattr -cr "/Applications/The Collectory.app"` and launch normally.
    This is needed once per version.
 
 Your data lives in `~/Library/Application Support/Collectory/` (database, images, attachments,
-automatic backups). Copy that folder — or use **Settings → Backup Now** — and you have everything.
+automatic backups; the folder keeps its original name). Copy that folder — or use
+**Settings → Backup Now** — and you have everything.
 
 ## iPad setup
 
