@@ -16,8 +16,8 @@
     "test": "node --test \"server/test/**/*.test.js\"",
     "rebuild:electron": "electron-builder install-app-deps",
     "rebuild:node": "npm rebuild better-sqlite3",
-    "dist": "npm run build && electron-builder --mac --publish never",
-    "release": "npm run build && electron-builder --mac --publish always"
+    "dist": "npm run build && electron-builder --mac --config electron-builder.config.js --publish never",
+    "release": "npm run build && electron-builder --mac --config electron-builder.config.js --publish always"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
@@ -34,38 +34,5 @@
     "electron-builder": "^25.1.8",
     "nodemon": "^3.1.9",
     "supertest": "^7.0.0"
-  },
-  "build": {
-    "appId": "com.collectory.app",
-    "productName": "The Collectory",
-    "artifactName": "Collectory-${arch}.${ext}",
-    "directories": { "buildResources": "build", "output": "release" },
-    "files": [
-      "electron/**",
-      "server/**",
-      "!server/test/**",
-      "client/dist/**",
-      "package.json"
-    ],
-    "asarUnpack": ["**/*.node"],
-    "npmRebuild": true,
-    "afterPack": "build/afterPack.js",
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [{ "target": "dmg" }, { "target": "zip" }],
-      "icon": "build/icon.png",
-      "identity": null,
-      "hardenedRuntime": false,
-      "darkModeSupport": true
-    },
-    "dmg": {
-      "title": "The Collectory",
-      "iconSize": 100,
-      "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
-      ]
-    },
-    "publish": [{ "provider": "github" }]
   }
 }
