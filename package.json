@@ -6,7 +6,7 @@
   "main": "electron/main.js",
   "license": "MIT",
   "author": "Collectory",
-  "repository": "github:lukedub/collectory",
+  "repository": "github:shopEngineering/collectory",
   "engines": { "node": ">=20" },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"COLLECTORY_DATA_DIR=.data-dev nodemon --watch server --ext js,json,sql server/index.js\" \"npm --prefix client run dev\"",
