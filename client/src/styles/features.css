@@ -1523,3 +1523,146 @@ table.data tbody td.editable-cell.editing {
 .item-form.in-pane .form-actions {
   background: color-mix(in srgb, var(--bg-2) 90%, transparent);
 }
+
+/* ---------- Item reference pickers (item_ref / item_refs) — §5.2 ---------- */
+.ref-multi { display: flex; flex-direction: column; gap: 8px; }
+.ref-single { display: flex; }
+.ref-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px 0 6px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  max-width: 100%;
+  text-decoration: none;
+}
+.ref-chip .ref-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.ref-chip-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
+}
+.ref-chip-hint {
+  font-size: 11px;
+  color: var(--ink-4);
+  flex: none;
+}
+.ref-chip button {
+  color: var(--ink-4);
+  display: grid;
+  place-items: center;
+  margin-left: 2px;
+}
+.ref-chip button:hover { color: var(--ink); }
+.ref-chip-link { transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+@media (any-hover: hover) {
+  .ref-chip-link:hover { border-color: var(--brass); color: var(--ink); }
+}
+
+/* search-as-you-type dropdown */
+.ref-search { position: relative; }
+.ref-search-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 9px;
+  background: var(--sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  color: var(--ink-4);
+}
+.ref-search-input:focus-within { border-color: var(--brass); }
+.ref-search-input .input {
+  border: none;
+  background: transparent;
+  padding-left: 4px;
+}
+.ref-search-input .input:focus { box-shadow: none; }
+
+.ref-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg, var(--shadow));
+  padding: 4px;
+}
+.ref-menu-empty {
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--ink-4);
+  text-align: center;
+}
+.ref-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease);
+}
+.ref-option:hover { background: var(--surface-2); }
+.ref-opt-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex: none;
+}
+.ref-opt-thumb.placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--ink-4);
+}
+.ref-opt-body { display: flex; flex-direction: column; min-width: 0; }
+.ref-opt-name {
+  font-size: 13.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ref-opt-meta {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* spec-sheet ref values render as inline links */
+.spec-refs a { color: var(--accent); text-decoration: none; }
+.spec-refs a:hover { text-decoration: underline; }
+
+/* ---------- Related card (item detail right column) — §5.2 ---------- */
+.related-card { margin-top: var(--sp-5); }
+.related-group { margin-bottom: var(--sp-3); }
+.related-group:last-child { margin-bottom: 0; }
+.related-group-label {
+  font-size: 11.5px;
+  color: var(--ink-4);
+  margin-bottom: 6px;
+}

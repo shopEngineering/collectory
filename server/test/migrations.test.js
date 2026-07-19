@@ -34,8 +34,10 @@ test('migrations bootstrap: schema created, migration recorded, health ok', asyn
 test('migrations are idempotent across reopen', async (t) => {
   const { app, dataDir, ctx } = freshApp();
   cleanup(t, dataDir, ctx);
+  const before = ctx.db.prepare('SELECT COUNT(*) AS c FROM _migrations').get().c;
   ctx.closeDb();
   ctx.reopenDb(); // re-runs migration runner; should not error or double-apply
-  const count = ctx.db.prepare('SELECT COUNT(*) AS c FROM _migrations').get().c;
-  assert.strictEqual(count, 1, 'migration applied exactly once');
+  const after = ctx.db.prepare('SELECT COUNT(*) AS c FROM _migrations').get().c;
+  assert.ok(before >= 1, 'at least one migration applied');
+  assert.strictEqual(after, before, 'reopen does not double-apply migrations');
 });

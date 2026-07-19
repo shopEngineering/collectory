@@ -1,0 +1,35 @@
+{
+  "key": "magazines",
+  "name": "Magazines",
+  "icon": "magazine",
+  "color": "#5b6673",
+  "description": "Detachable magazines and feeding devices — capacity, fitment to your firearms, spring/follower condition, loaded state, and reliability history.",
+  "fields": [
+    { "key": "manufacturer", "label": "Manufacturer", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "Magpul, OEM, KCI, ProMag…" },
+    { "key": "model", "label": "Model", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "PMAG 30 GEN M3, MecGar 15rd…" },
+    { "key": "fits_firearms", "label": "Fits Firearms", "type": "item_refs", "refTemplate": "firearms", "section": "Identity", "help": "Link the firearm(s) this magazine feeds" },
+    { "key": "caliber", "label": "Caliber / Cartridge", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "5.56 NATO, 9mm, .308 Win…" },
+    { "key": "capacity", "label": "Capacity", "type": "number", "unit": "rds", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "material", "label": "Material", "type": "select", "section": "Identity", "options": ["Steel", "Aluminum", "Polymer", "Stainless"] },
+    { "key": "finish", "label": "Finish", "type": "text", "section": "Identity", "placeholder": "Phosphate, anodized, nitride…" },
+    { "key": "country_of_origin", "label": "Country of Origin", "type": "text", "section": "Identity" },
+    { "key": "condition", "label": "Condition", "type": "select", "section": "Condition", "showInTable": true, "options": ["New", "Excellent", "Very Good", "Good", "Fair", "Poor"] },
+    { "key": "spring_replaced", "label": "Spring Replaced", "type": "date", "section": "Condition", "help": "Date the magazine spring was last replaced" },
+    { "key": "follower_type", "label": "Follower Type", "type": "text", "section": "Condition", "placeholder": "Anti-tilt, OEM, aftermarket…" },
+    { "key": "loaded", "label": "Loaded", "type": "checkbox", "section": "Loaded State" },
+    { "key": "loaded_with", "label": "Loaded With", "type": "ammo_ref", "section": "Loaded State", "help": "Ammo currently in this magazine. Loading does NOT deduct from your ammo lot — a lot's round count means rounds owned wherever stored; only firing (a range session) deducts. This prevents double-counting." },
+    { "key": "loaded_rounds", "label": "Loaded Rounds", "type": "number", "unit": "rds", "section": "Loaded State" },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage", "placeholder": "Range bag, safe drawer 2…" }
+  ],
+  "logTypes": [
+    { "key": "reliability", "label": "Reliability", "icon": "target", "color": "#8a6d3b", "fields": [
+      { "key": "malfunction_type", "label": "Malfunction Type", "type": "select", "options": ["Failure to Feed", "Failure to Eject", "Double Feed", "Bolt Lock Failure", "Other"] },
+      { "key": "firearm_used", "label": "Firearm Used", "type": "item_ref", "refTemplate": "firearms" },
+      { "key": "rounds_through", "label": "Rounds Through", "type": "number", "unit": "rds" }
+    ] },
+    { "key": "maintenance", "label": "Maintenance", "icon": "wrench", "color": "#64748b", "fields": [
+      { "key": "work_done", "label": "Work Done", "type": "text" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

@@ -19,6 +19,16 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M8 13h8" />
     </>
   ),
+  // Detachable box magazine: curved body, feed lips at top, witness holes down the spine, floorplate at base.
+  magazine: (
+    <>
+      <path d="M9 3h5l1.4 13.5a2 2 0 0 1-1.6 2.16l-3.3.66a2 2 0 0 1-2.36-1.6L7 4.4A1.5 1.5 0 0 1 8.5 3z" />
+      <path d="M9 3l.4 3.5 5.7-.7" />
+      <path d="M8 20.5l6.3-1.26.5 1.86a1 1 0 0 1-.78 1.2l-4 .8a1 1 0 0 1-1.2-.78z" />
+      <path d="M11 9.5l1 0" />
+      <path d="M11.3 12.5l1 0" />
+    </>
+  ),
   knife: (
     <>
       <path d="M3 17l11-11a5 5 0 0 1 4 4L7 21z" />
@@ -455,7 +465,7 @@ export function Icon({ name, size = 20, ...rest }: IconProps) {
 }
 
 export const COLLECTION_ICON_KEYS = [
-  'firearm', 'ammo', 'knife', 'coin', 'stamp', 'box', 'watch', 'camera',
+  'firearm', 'ammo', 'magazine', 'knife', 'coin', 'stamp', 'box', 'watch', 'camera',
   'book', 'card', 'gem', 'guitar', 'medal', 'bottle', 'archive', 'star',
 ] as const;
 

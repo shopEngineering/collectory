@@ -5,15 +5,18 @@ import { Icon } from './Icon';
 import type { FieldDef, FieldValue } from '../api/types';
 import { centsToDollars, dollarsToCents } from '../lib/format';
 import { AmmoPicker } from './AmmoPicker';
+import { ItemRefPicker, ItemRefsPicker } from './ItemRefPicker';
 
 interface FieldInputProps {
   def: FieldDef;
   value: FieldValue;
   onChange: (value: FieldValue) => void;
   id?: string;
+  // For ammo_ref in a range-log context: the gun's associated_ammo ids, pinned first.
+  associatedIds?: number[];
 }
 
-export function FieldInput({ def, value, onChange, id }: FieldInputProps) {
+export function FieldInput({ def, value, onChange, id, associatedIds }: FieldInputProps) {
   const fid = id ?? `f-${def.key}`;
 
   switch (def.type) {
@@ -180,6 +183,25 @@ export function FieldInput({ def, value, onChange, id }: FieldInputProps) {
         <AmmoPicker
           value={typeof value === 'number' ? value : null}
           onChange={(v) => onChange(v)}
+          associatedIds={associatedIds}
+        />
+      );
+
+    case 'item_ref':
+      return (
+        <ItemRefPicker
+          value={typeof value === 'number' ? value : null}
+          onChange={(v) => onChange(v)}
+          refTemplate={def.refTemplate}
+        />
+      );
+
+    case 'item_refs':
+      return (
+        <ItemRefsPicker
+          value={Array.isArray(value) ? value.map((x) => Number(x)) : null}
+          onChange={(v) => onChange(v)}
+          refTemplate={def.refTemplate}
         />
       );
 
@@ -203,10 +225,12 @@ export function Field({
   def,
   value,
   onChange,
+  associatedIds,
 }: {
   def: FieldDef;
   value: FieldValue;
   onChange: (v: FieldValue) => void;
+  associatedIds?: number[];
 }) {
   if (def.type === 'checkbox') {
     return (
@@ -216,13 +240,14 @@ export function Field({
       </div>
     );
   }
+  const fullWidth = def.type === 'textarea' || def.type === 'multiselect' || def.type === 'item_refs';
   return (
-    <div className={`field ${def.type === 'textarea' || def.type === 'multiselect' ? 'full' : ''}`}>
+    <div className={`field ${fullWidth ? 'full' : ''}`}>
       <label className="field-label" htmlFor={`f-${def.key}`}>
         {def.label}
         {def.required && <span className="field-req">*</span>}
       </label>
-      <FieldInput def={def} value={value} onChange={onChange} />
+      <FieldInput def={def} value={value} onChange={onChange} associatedIds={associatedIds} />
       {def.help && <span className="field-help">{def.help}</span>}
     </div>
   );

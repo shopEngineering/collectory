@@ -27,6 +27,7 @@ import {
   useItem,
   useLogs,
   useProvenance,
+  useRelated,
   useUpdateLog,
   useUpdateProvenance,
   useValuations,
@@ -39,10 +40,12 @@ import type {
   FieldValue,
   FieldValues,
   Item,
+  ItemChoice,
   LogEntry,
   LogTypeDef,
   Photo,
   Provenance,
+  RelatedGroup,
   Valuation,
   ValuationSource,
 } from '../api/types';
@@ -226,9 +229,10 @@ export function ItemDetailPage() {
           <TabbedPanels item={item} collection={collection} />
         </div>
 
-        {/* RIGHT: spec sheet */}
+        {/* RIGHT: spec sheet + related */}
         <aside>
           <SpecSheet item={item} collection={collection} />
+          <RelatedCard itemId={item.id} />
         </aside>
       </div>
 
@@ -400,6 +404,11 @@ function LogAddForm({ item, collection }: { item: Item; collection: CollectionFu
   const activeType = logTypeFor(collection, typeKey);
   const typeFields = activeType.fields ?? [];
   const pending = createLog.isPending || uploadingPhotos;
+  // The gun's associated ammo, pinned first in the range-log ammo picker (§5.2).
+  const associatedIds = useMemo(() => {
+    const raw = item.fields.associated_ammo;
+    return Array.isArray(raw) ? raw.map((x) => Number(x)).filter((n) => Number.isInteger(n)) : [];
+  }, [item.fields.associated_ammo]);
 
   const queuePhotos = (files: FileList | File[]) => {
     const additions: QueuedLogPhoto[] = Array.from(files)
@@ -498,7 +507,13 @@ function LogAddForm({ item, collection }: { item: Item; collection: CollectionFu
         </div>
 
         {typeFields.map((def) => (
-          <Field key={def.key} def={def} value={data[def.key] ?? null} onChange={(v) => setData((d) => ({ ...d, [def.key]: v }))} />
+          <Field
+            key={def.key}
+            def={def}
+            value={data[def.key] ?? null}
+            onChange={(v) => setData((d) => ({ ...d, [def.key]: v }))}
+            associatedIds={def.type === 'ammo_ref' ? associatedIds : undefined}
+          />
         ))}
 
         <div className="field full">
@@ -1289,6 +1304,58 @@ function SpecSheet({ item, collection }: { item: Item; collection: CollectionFul
   );
 }
 
+// ---- Related card (right column) ------------------------------------------
+// A linked item chip: thumbnail (or icon) + name, links to the item.
+function RefChipLink({ choice }: { choice: ItemChoice }) {
+  return (
+    <Link to={`/items/${choice.id}`} className="ref-chip ref-chip-link">
+      {choice.thumbUrl ? (
+        <img className="ref-chip-thumb" src={choice.thumbUrl} alt="" />
+      ) : (
+        <Icon name="box" size={13} />
+      )}
+      <span className="ref-chip-name">{choice.name}</span>
+      {choice.hint && <span className="ref-chip-hint">{choice.hint}</span>}
+    </Link>
+  );
+}
+
+function RelatedGroupBlock({ group }: { group: RelatedGroup }) {
+  return (
+    <div className="related-group">
+      <div className="related-group-label">{group.fieldLabel}</div>
+      <div className="ref-chips">
+        {group.items.map((c) => (
+          <RefChipLink key={c.id} choice={c} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RelatedCard({ itemId }: { itemId: number }) {
+  const { data } = useRelated(itemId);
+  const references = data?.references ?? [];
+  const referencedBy = data?.referencedBy ?? [];
+  // Skip rendering entirely when both are empty (per §5.2).
+  if (references.length === 0 && referencedBy.length === 0) return null;
+
+  return (
+    <section className="spec-section related-card">
+      <div className="spec-head">
+        <span className="spec-rule" style={{ '--sec-accent': 'var(--brass)' } as React.CSSProperties} />
+        <span className="eyebrow">Related</span>
+      </div>
+      {references.map((g) => (
+        <RelatedGroupBlock key={`ref-${g.fieldKey}`} group={g} />
+      ))}
+      {referencedBy.map((g) => (
+        <RelatedGroupBlock key={`by-${g.fieldKey}-${g.templateKey ?? ''}`} group={g} />
+      ))}
+    </section>
+  );
+}
+
 function isMonoField(def: FieldDef): boolean {
   const k = def.key.toLowerCase();
   return k.includes('serial') || k.includes('number');
@@ -1296,6 +1363,27 @@ function isMonoField(def: FieldDef): boolean {
 
 function renderSpecValue(def: FieldDef, value: FieldValue): React.ReactNode {
   switch (def.type) {
+    case 'item_ref':
+    case 'ammo_ref':
+      return (
+        <span className="spec-refs">
+          <ItemNameRef id={Number(value)} />
+        </span>
+      );
+    case 'item_refs': {
+      const ids = Array.isArray(value) ? value.map((x) => Number(x)).filter((n) => Number.isInteger(n)) : [];
+      if (!ids.length) return '—';
+      return (
+        <span className="spec-refs">
+          {ids.map((id, i) => (
+            <span key={id}>
+              {i > 0 && ', '}
+              <ItemNameRef id={id} />
+            </span>
+          ))}
+        </span>
+      );
+    }
     case 'currency':
       return <span className="spec-val-money">{formatMoney(typeof value === 'number' ? value : Number(value))}</span>;
     case 'date':

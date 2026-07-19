@@ -3,6 +3,7 @@ const express = require('express');
 const err = require('../util/errors');
 const itemSvc = require('../services/items');
 const statsSvc = require('../services/stats');
+const refSvc = require('../services/references');
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -52,21 +53,25 @@ module.exports = function miscRouter(ctx) {
   // GET /api/stats
   r.get('/stats', h((req, res) => res.json(statsSvc.dashboard(db))));
 
-  // GET /api/ammo-choices
-  r.get('/ammo-choices', h((req, res) => {
-    const rows = db
-      .prepare(
-        `SELECT i.id, i.name, i.quantity, i.fields_json
-         FROM items i JOIN collections c ON c.id = i.collection_id
-         WHERE c.template_key = 'ammunition' AND i.deleted_at IS NULL
-         ORDER BY i.name`
-      )
-      .all();
+  // GET /api/item-choices?template=&q=&excludeItemId= — generalized picker source (§5.2)
+  r.get('/item-choices', h((req, res) => {
     res.json(
-      rows.map((row) => {
-        const fields = require('../util/mappers').parseJson(row.fields_json, {});
-        const out = { id: row.id, name: row.name, quantity: row.quantity };
-        if (fields.caliber != null) out.caliber = fields.caliber;
+      refSvc.itemChoices(db, {
+        template: req.query.template,
+        q: req.query.q,
+        excludeItemId: req.query.excludeItemId,
+      })
+    );
+  }));
+
+  // GET /api/ammo-choices — alias of item-choices filtered to ammunition.
+  // Keeps the legacy shape ({id,name,quantity,caliber?}) plus the richer fields.
+  r.get('/ammo-choices', h((req, res) => {
+    const choices = refSvc.itemChoices(db, { template: 'ammunition', q: req.query.q });
+    res.json(
+      choices.map((c) => {
+        const out = { ...c };
+        if (c.hint != null) out.caliber = c.hint; // backcompat key
         return out;
       })
     );

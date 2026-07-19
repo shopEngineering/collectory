@@ -12,7 +12,9 @@ export type FieldType =
   | 'checkbox'
   | 'url'
   | 'rating'
-  | 'ammo_ref';
+  | 'ammo_ref'
+  | 'item_ref'
+  | 'item_refs';
 
 export type ItemStatus = 'owned' | 'wishlist' | 'loaned' | 'sold' | 'traded' | 'gifted';
 
@@ -30,6 +32,7 @@ export interface FieldDef {
   section?: string;
   placeholder?: string;
   help?: string;
+  refTemplate?: string; // item_ref/item_refs/ammo_ref: restrict choices to this template
 }
 
 export interface LogTypeDef {
@@ -76,7 +79,8 @@ export interface Tag {
 }
 
 // Dynamic field values. null clears a key on PATCH.
-export type FieldValue = string | number | boolean | string[] | null;
+// number[] is used by item_refs (arrays of referenced item ids).
+export type FieldValue = string | number | boolean | string[] | number[] | null;
 export type FieldValues = Record<string, FieldValue>;
 
 export interface Photo {
@@ -249,6 +253,31 @@ export interface AmmoChoice {
   name: string;
   quantity: number;
   caliber?: string;
+}
+
+// Item-choices picker source (§5.2). ammo-choices is an alias returning this
+// shape plus a legacy `caliber` mirror of `hint`.
+export interface ItemChoice {
+  id: number;
+  name: string;
+  collectionId: number;
+  collectionName: string;
+  quantity: number;
+  thumbUrl: string | null;
+  hint: string | null;
+  caliber?: string; // alias endpoint only
+}
+
+export interface RelatedGroup {
+  fieldKey: string;
+  fieldLabel: string;
+  templateKey?: string | null;
+  items: ItemChoice[];
+}
+
+export interface RelatedResponse {
+  references: RelatedGroup[];
+  referencedBy: RelatedGroup[];
 }
 
 export interface SearchResult {

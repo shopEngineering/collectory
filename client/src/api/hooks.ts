@@ -13,12 +13,14 @@ import type {
   CollectionFull,
   FieldDef,
   Item,
+  ItemChoice,
   ItemCoreInput,
   ItemListResponse,
   ItemQuery,
   LogEntry,
   LogTypeDef,
   Provenance,
+  RelatedResponse,
   SearchResponse,
   Settings,
   StatsResponse,
@@ -39,6 +41,8 @@ export const qk = {
   stats: ['stats'] as const,
   templates: ['templates'] as const,
   ammoChoices: ['ammo-choices'] as const,
+  itemChoices: (template: string | undefined, q: string) => ['item-choices', template ?? '', q] as const,
+  related: (id: number) => ['related', id] as const,
   search: (q: string) => ['search', q] as const,
   settings: ['settings'] as const,
   trash: ['trash'] as const,
@@ -167,6 +171,8 @@ export function useCreateItem() {
       qc.invalidateQueries({ queryKey: ['items'] });
       qc.invalidateQueries({ queryKey: qk.stats });
       qc.invalidateQueries({ queryKey: qk.collections });
+      qc.invalidateQueries({ queryKey: ['item-choices'] });
+      qc.invalidateQueries({ queryKey: ['related'] });
       if (item?.id) qc.setQueryData(qk.item(item.id), item);
     },
   });
@@ -181,6 +187,8 @@ export function useUpdateItem(id: number) {
       qc.invalidateQueries({ queryKey: ['items'] });
       qc.invalidateQueries({ queryKey: qk.stats });
       qc.invalidateQueries({ queryKey: qk.collections });
+      qc.invalidateQueries({ queryKey: ['item-choices'] });
+      qc.invalidateQueries({ queryKey: ['related'] });
     },
   });
 }
@@ -240,6 +248,8 @@ function invalidateItemDerived(qc: ReturnType<typeof useQueryClient>, itemId: nu
   qc.invalidateQueries({ queryKey: qk.item(itemId) });
   qc.invalidateQueries({ queryKey: ['items'] });
   qc.invalidateQueries({ queryKey: qk.ammoChoices });
+  qc.invalidateQueries({ queryKey: ['item-choices'] });
+  qc.invalidateQueries({ queryKey: ['related'] });
   qc.invalidateQueries({ queryKey: qk.stats });
 }
 
@@ -402,6 +412,30 @@ export function useAmmoChoices(enabled = true) {
     queryKey: qk.ammoChoices,
     queryFn: () => api.get<AmmoChoice[]>('/ammo-choices'),
     enabled,
+  });
+}
+
+// Item-choices picker source, parameterized by refTemplate (§5.2).
+export function useItemChoices(refTemplate: string | undefined, q = '', enabled = true) {
+  return useQuery({
+    queryKey: qk.itemChoices(refTemplate, q),
+    queryFn: () => {
+      const params: Record<string, unknown> = {};
+      if (refTemplate) params.template = refTemplate;
+      if (q.trim()) params.q = q.trim();
+      return api.get<ItemChoice[]>('/item-choices', params);
+    },
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+// Related items for the detail "Related" card (§5.2).
+export function useRelated(itemId: number | undefined) {
+  return useQuery({
+    queryKey: itemId ? qk.related(itemId) : ['related', 'none'],
+    queryFn: () => api.get<RelatedResponse>(`/items/${itemId}/related`),
+    enabled: itemId != null && !Number.isNaN(itemId),
   });
 }
 

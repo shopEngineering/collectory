@@ -3,6 +3,7 @@ const express = require('express');
 const m = require('../util/mappers');
 const err = require('../util/errors');
 const itemSvc = require('../services/items');
+const refSvc = require('../services/references');
 const imageStore = require('../services/imageStore');
 
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -138,6 +139,13 @@ module.exports = function itemsRouter(ctx) {
     const item = fullItem(db, Number(req.params.id));
     if (!item) throw err.notFound('item not found');
     res.json(item);
+  }));
+
+  // GET /api/items/:id/related — outgoing refs + referencedBy + used_with (§5.2)
+  r.get('/items/:id/related', h((req, res) => {
+    const out = refSvc.related(db, Number(req.params.id));
+    if (!out) throw err.notFound('item not found');
+    res.json(out);
   }));
 
   // PATCH /api/items/:id

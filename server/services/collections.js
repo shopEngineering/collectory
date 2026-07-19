@@ -5,8 +5,8 @@ const m = require('../util/mappers');
 function insertFields(db, collectionId, fields) {
   const stmt = db.prepare(
     `INSERT INTO field_defs
-     (collection_id, key, label, type, options_json, unit, required, show_in_table, show_on_card, section, placeholder, help, sort_order)
-     VALUES (@collection_id, @key, @label, @type, @options_json, @unit, @required, @show_in_table, @show_on_card, @section, @placeholder, @help, @sort_order)`
+     (collection_id, key, label, type, options_json, unit, required, show_in_table, show_on_card, section, placeholder, help, ref_template, sort_order)
+     VALUES (@collection_id, @key, @label, @type, @options_json, @unit, @required, @show_in_table, @show_on_card, @section, @placeholder, @help, @ref_template, @sort_order)`
   );
   fields.forEach((f, i) => {
     const row = m.fieldDefFromApi(f, i);

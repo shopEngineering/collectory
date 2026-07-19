@@ -31,6 +31,7 @@ function fieldDefToApi(row) {
   if (row.unit != null) out.unit = row.unit;
   if (row.placeholder != null) out.placeholder = row.placeholder;
   if (row.help != null) out.help = row.help;
+  if (row.ref_template != null) out.refTemplate = row.ref_template;
   return out;
 }
 
@@ -48,6 +49,7 @@ function fieldDefFromApi(f, sortOrder) {
     section: f.section != null ? f.section : 'Details',
     placeholder: f.placeholder != null ? f.placeholder : null,
     help: f.help != null ? f.help : null,
+    ref_template: f.refTemplate != null ? f.refTemplate : null,
     sort_order: sortOrder != null ? sortOrder : (f.sortOrder != null ? f.sortOrder : 0),
   };
 }
@@ -62,6 +64,7 @@ function logTypeFieldToApi(f) {
   if (f.placeholder != null) out.placeholder = f.placeholder;
   if (f.help != null) out.help = f.help;
   if (f.required != null) out.required = !!f.required;
+  if (f.refTemplate != null) out.refTemplate = f.refTemplate;
   return out;
 }
 
