@@ -11,16 +11,10 @@ permissions:
 
 jobs:
   build-mac:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14   # Apple Silicon
-            arch: arm64
-          - runner: macos-13   # Intel
-            arch: x64
-    runs-on: ${{ matrix.runner }}
-    name: macOS ${{ matrix.arch }}
+    # Single Apple Silicon runner cross-builds both arches — Intel (macos-13)
+    # hosted runners are retired and jobs targeting them queue forever.
+    runs-on: macos-14
+    name: macOS arm64 + x64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,6 +40,6 @@ jobs:
         run: npm run build
 
       - name: Build and publish (electron-builder)
-        run: npx electron-builder --mac --publish always
+        run: npx electron-builder --mac --arm64 --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
