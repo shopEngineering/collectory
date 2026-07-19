@@ -1,0 +1,25 @@
+{
+  "key": "accessories",
+  "name": "Accessories",
+  "icon": "camera",
+  "color": "#4f6b74",
+  "description": "Optics, lights, slings, holsters, cases and other add-ons — each linkable to the firearms it fits or is mounted on.",
+  "fields": [
+    { "key": "category", "label": "Type", "type": "select", "section": "Identity", "showInTable": true, "showOnCard": true, "options": ["Optic / Scope", "Red Dot", "Magnifier", "Iron Sights", "Light", "Laser", "Sling", "Holster", "Case / Bag", "Bipod", "Grip / Foregrip", "Suppressor", "Muzzle Device", "Cleaning Kit", "Tool", "Other"] },
+    { "key": "manufacturer", "label": "Manufacturer", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "model", "label": "Model", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "fits_firearms", "label": "Fits / Mounted On", "type": "item_refs", "refTemplate": "firearms", "section": "Identity", "help": "The firearms this accessory fits or is mounted on" },
+    { "key": "serial_number", "label": "Serial Number", "type": "text", "section": "Identity" },
+    { "key": "mount_type", "label": "Mount / Fitment", "type": "text", "section": "Specifications", "placeholder": "Picatinny, QD, 1913, MLOK…" },
+    { "key": "caliber", "label": "Caliber (if specific)", "type": "text", "section": "Specifications" },
+    { "key": "condition", "label": "Condition", "type": "select", "section": "Condition", "showInTable": true, "options": ["New In Box", "New", "Excellent", "Very Good", "Good", "Fair", "Poor"] },
+    { "key": "included_extras", "label": "Included Extras", "type": "multiselect", "section": "Condition", "options": ["Box", "Manual", "Mount", "Caps", "Tool", "Battery"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "maintenance", "label": "Maintenance", "icon": "wrench", "color": "#64748b", "fields": [
+      { "key": "work_done", "label": "Work Done", "type": "text", "placeholder": "Zeroed, battery change, cleaned lens…" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

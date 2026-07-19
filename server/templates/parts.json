@@ -1,0 +1,26 @@
+{
+  "key": "parts",
+  "name": "Parts",
+  "icon": "box",
+  "color": "#6b6250",
+  "description": "Spare and installed components — barrels, triggers, springs, bolts — tracked by install state and the firearms they fit.",
+  "fields": [
+    { "key": "part_type", "label": "Part Type", "type": "select", "section": "Identity", "showInTable": true, "showOnCard": true, "options": ["Barrel", "Trigger / Trigger Group", "Bolt / BCG", "Firing Pin", "Recoil Spring", "Spring", "Pin", "Grip", "Stock", "Handguard / Forend", "Sight", "Magazine Release", "Safety", "Extractor", "Buffer", "Other"] },
+    { "key": "manufacturer", "label": "Manufacturer", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "model", "label": "Model / Part No.", "type": "text", "section": "Identity", "showInTable": true },
+    { "key": "fits_firearms", "label": "Fits", "type": "item_refs", "refTemplate": "firearms", "section": "Identity", "help": "The firearms this part fits" },
+    { "key": "install_state", "label": "Install State", "type": "select", "section": "Identity", "showInTable": true, "options": ["Installed", "Spare / On Hand", "Sold"] },
+    { "key": "installed_on", "label": "Installed On", "type": "item_ref", "refTemplate": "firearms", "section": "Identity", "help": "If installed, the firearm it's currently in" },
+    { "key": "caliber", "label": "Caliber (if specific)", "type": "text", "section": "Specifications" },
+    { "key": "condition", "label": "Condition", "type": "select", "section": "Condition", "showInTable": true, "options": ["New In Box", "New", "Excellent", "Very Good", "Good", "Fair", "Poor"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "modification", "label": "Install / Work", "icon": "wrench", "color": "#64748b", "fields": [
+      { "key": "work_done", "label": "Work Done", "type": "text", "placeholder": "Installed on…, headspaced, fitted…" },
+      { "key": "gunsmith", "label": "Gunsmith / Shop", "type": "text" },
+      { "key": "cost", "label": "Cost", "type": "currency" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

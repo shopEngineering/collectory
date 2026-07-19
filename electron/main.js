@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { checkForUpdates } = require('./updater');
 
 // Keep the data directory named "Collectory" regardless of the display name
 // ("The Collectory" productName). This decouples the on-disk store from the
@@ -89,6 +90,11 @@ async function bootstrap() {
 
   buildMenu();
   createWindow();
+
+  // Quietly check for a newer release a few seconds after launch (production only).
+  if (!devUrl && !serverError) {
+    setTimeout(() => checkForUpdates({ silent: true }), 4000);
+  }
 }
 
 function createWindow() {
@@ -163,6 +169,7 @@ function buildMenu() {
             label: 'The Collectory',
             submenu: [
               { role: 'about', label: 'About The Collectory' },
+              { label: 'Check for Updates…', click: () => checkForUpdates({ silent: false }) },
               { type: 'separator' },
               {
                 label: 'Settings…',
