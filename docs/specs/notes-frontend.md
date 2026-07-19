@@ -195,6 +195,56 @@ Two Browse-page editing features, all inside `client/` (no server changes; relie
 - Revert-on-error via `['items']` re-invalidation (react-query refetch) rather than
   optimistic rollback — consistent with §8.
 
+## 2026-07-19 follow-up 2: prominent Edit, easy photo adding, clickable rows
+
+Three UX refinements, client-only.
+
+### Prominent Edit (item detail)
+- Banner header now shows a visible secondary **Edit** button (pencil + label,
+  `.btn`) left of the kebab; navigates to `/items/:id/edit`. "Edit" removed from
+  the kebab, which keeps Duplicate / Print / Move to trash.
+
+### Easy photo adding
+- **New `lib/photoUpload.ts`** — shared `uploadPhotoFile(path, file, caption?)`:
+  canvas thumbnail (`makeThumbnail`) + multipart POST (`photo`/`thumb`/`width`/
+  `height`/`caption` parts); server copies the original if the thumb part fails.
+- **Inline add-log form (Activity tab)**: a dashed photo-attach row
+  (`.log-photo-add`) with an "Add photos" button (camera icon, `capture=
+  "environment"` for iPad, multiple) and drag-drop. Files queue locally with
+  object-URL thumbnails + per-photo remove; on submit the log is created first,
+  then each queued file POSTs to `/api/logs/:id/photos`, then `['logs', itemId]`
+  re-invalidates so the timeline shows them. Submit button shows "Attaching
+  photos…" while uploading; queue clears on success only.
+- **Every timeline log entry**: a small camera button in its header (next to the
+  date/kebab — works for photo-less logs too) → file picker → uploads to that
+  log, invalidates the logs query. Spinner replaces the icon while uploading.
+- **Item gallery**: always-visible dashed "Add photo" tile (`.gallery-add`,
+  camera icon, capture attr, multiple) at the end of the thumbnail strip —
+  uploads straight to `/api/items/:id/photos` (no edit mode) and invalidates
+  `['item', id]` + `['items']` so cover/gallery/list refresh. The gallery strip
+  now renders even for zero-photo items (just the tile); tile is `no-print`.
+
+### Clickable table rows
+- Row hover (`table.data.editable`, `@media (any-hover:hover)`): surface tint +
+  `var(--shadow)` lift + a 3px inset brass bar — echoes the card hover/accent.
+- Name cell (`.cell-name`): medium weight + ink always; brass underline on row
+  hover (suppressed while that cell is inline-editing).
+- Trailing chevron-right (`.row-go`) inside the Actions cell after the pencil:
+  slides in on row hover; always visible at 0.4 opacity on coarse pointers.
+  `col-actions` widened 44→64px. The Actions td no longer swallows clicks —
+  only the pencil stops propagation, so chevron/gap clicks navigate the row.
+  Double-click-to-edit and select mode verified unchanged.
+
+### Files touched
+- Added: `client/src/lib/photoUpload.ts`.
+- Modified: `client/src/pages/ItemDetailPage.tsx`, `client/src/pages/BrowsePage.tsx`,
+  `client/src/styles/features.css`.
+
+Verified against the live demo (Playwright): Edit button + gallery tile + log
+attach row + per-log camera render; a real upload to a log's photos endpoint
+round-tripped and appeared in the timeline (then removed); row hover shows
+underline/brass bar/pencil+chevron; double-click inline editing still opens.
+
 ## Verify
 
 ```

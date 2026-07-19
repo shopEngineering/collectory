@@ -1,7 +1,7 @@
 // Item detail: ambient banner + computed-stat chips, photo gallery + lightbox,
 // spec sheet grouped by section, and tabs for Activity / Provenance / Value / Files.
 // Everything renders dynamically from the collection's field & log-type defs. DESIGN §6.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Field } from '../components/FieldInput';
@@ -55,6 +55,8 @@ import {
   dollarsToCents,
   centsToDollars,
 } from '../lib/format';
+import { isImageFile } from '../lib/image';
+import { uploadPhotoFile } from '../lib/photoUpload';
 
 // A note log type is always valid even if the collection didn't define one.
 const NOTE_LOGTYPE: LogTypeDef = { key: 'note', label: 'Note', icon: 'note', color: '#6b7280', fields: [] };
@@ -120,7 +122,6 @@ export function ItemDetailPage() {
   const cs = item.computedStats;
 
   const menuItems: MenuItemDef[] = [
-    { label: 'Edit', icon: 'edit', onClick: () => navigate(`/items/${item.id}/edit`) },
     {
       label: 'Duplicate',
       icon: 'duplicate',
@@ -161,20 +162,29 @@ export function ItemDetailPage() {
               </Link>
               <h1 className="banner-name serif">{item.name}</h1>
             </div>
-            <Menu
-              align="right"
-              items={menuItems}
-              trigger={({ toggle, ref }) => (
-                <button
-                  ref={(el) => ref(el)}
-                  className="btn-icon btn-ghost no-print"
-                  aria-label="Item actions"
-                  onClick={toggle}
-                >
-                  <Icon name="kebab" size={20} />
-                </button>
-              )}
-            />
+            <div className="row no-print" style={{ gap: 8, flex: 'none' }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate(`/items/${item.id}/edit`)}
+              >
+                <Icon name="edit" size={15} /> Edit
+              </button>
+              <Menu
+                align="right"
+                items={menuItems}
+                trigger={({ toggle, ref }) => (
+                  <button
+                    ref={(el) => ref(el)}
+                    className="btn-icon btn-ghost"
+                    aria-label="Item actions"
+                    onClick={toggle}
+                  >
+                    <Icon name="kebab" size={20} />
+                  </button>
+                )}
+              />
+            </div>
           </div>
           <div className="banner-chips">
             <StatusBadge status={item.status} />
@@ -197,22 +207,21 @@ export function ItemDetailPage() {
       <div className="detail-layout">
         {/* LEFT */}
         <div>
-          {item.photos.length > 0 && (
-            <div className="gallery" style={{ marginBottom: 'var(--sp-5)' }}>
-              {item.photos.map((photo, i) => (
-                <button
-                  key={photo.id}
-                  type="button"
-                  className="gallery-thumb"
-                  onClick={() => setLightboxIndex(i)}
-                  aria-label={photo.caption || `Photo ${i + 1}`}
-                >
-                  <img src={photo.thumbUrl} alt={photo.caption || `Photo ${i + 1}`} />
-                  {item.coverPhotoId === photo.id && <span className="cover-badge">Cover</span>}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="gallery" style={{ marginBottom: 'var(--sp-5)' }}>
+            {item.photos.map((photo, i) => (
+              <button
+                key={photo.id}
+                type="button"
+                className="gallery-thumb"
+                onClick={() => setLightboxIndex(i)}
+                aria-label={photo.caption || `Photo ${i + 1}`}
+              >
+                <img src={photo.thumbUrl} alt={photo.caption || `Photo ${i + 1}`} />
+                {item.coverPhotoId === photo.id && <span className="cover-badge">Cover</span>}
+              </button>
+            ))}
+            <GalleryAddTile itemId={item.id} />
+          </div>
 
           <TabbedPanels item={item} collection={collection} />
         </div>
@@ -250,6 +259,53 @@ export function ItemDetailPage() {
         onCancel={() => setConfirmDelete(false)}
       />
     </div>
+  );
+}
+
+// ---- Gallery add tile ------------------------------------------------------
+// Always-visible "add" square at the end of the thumbnail strip: uploads
+// straight to the item (no edit mode), then refreshes item + list queries.
+function GalleryAddTile({ itemId }: { itemId: number }) {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const handleFiles = async (files: FileList) => {
+    const list = Array.from(files).filter(isImageFile);
+    if (!list.length) return;
+    setBusy(true);
+    try {
+      for (const file of list) {
+        try {
+          await uploadPhotoFile(`/items/${itemId}/photos`, file);
+        } catch (e) {
+          toast.error(`Upload failed: ${(e as Error).message}`);
+        }
+      }
+      qc.invalidateQueries({ queryKey: qk.item(itemId) });
+      qc.invalidateQueries({ queryKey: ['items'] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <label className="gallery-add no-print" title="Add photos">
+      {busy ? <Spinner /> : <Icon name="camera" size={22} />}
+      <span>{busy ? 'Uploading…' : 'Add photo'}</span>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        hidden
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.files?.length) void handleFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </label>
   );
 }
 
@@ -319,8 +375,16 @@ function ActivityTab({
   );
 }
 
+// A photo picked for the log form before the log exists (uploaded on submit).
+interface QueuedLogPhoto {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
 function LogAddForm({ item, collection }: { item: Item; collection: CollectionFull }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const createLog = useCreateLog(item.id);
   const logTypes = collection.logTypes.length ? collection.logTypes : [NOTE_LOGTYPE];
 
@@ -329,15 +393,42 @@ function LogAddForm({ item, collection }: { item: Item; collection: CollectionFu
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [data, setData] = useState<FieldValues>({});
+  const [queuedPhotos, setQueuedPhotos] = useState<QueuedLogPhoto[]>([]);
+  const [photoDrag, setPhotoDrag] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   const activeType = logTypeFor(collection, typeKey);
   const typeFields = activeType.fields ?? [];
+  const pending = createLog.isPending || uploadingPhotos;
+
+  const queuePhotos = (files: FileList | File[]) => {
+    const additions: QueuedLogPhoto[] = Array.from(files)
+      .filter(isImageFile)
+      .map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+    if (additions.length) setQueuedPhotos((prev) => [...prev, ...additions]);
+  };
+
+  const removeQueuedPhoto = (id: string) => {
+    setQueuedPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((p) => p.id !== id);
+    });
+  };
 
   const reset = () => {
     setTitle('');
     setNotes('');
     setData({});
     setDate(todayISO());
+    setQueuedPhotos((prev) => {
+      for (const p of prev) URL.revokeObjectURL(p.previewUrl);
+      return [];
+    });
   };
 
   const submit = async () => {
@@ -346,13 +437,29 @@ function LogAddForm({ item, collection }: { item: Item; collection: CollectionFu
       for (const [k, v] of Object.entries(data)) {
         if (v !== null && v !== undefined && v !== '') cleanData[k] = v;
       }
-      await createLog.mutateAsync({
+      const created = await createLog.mutateAsync({
         logTypeKey: typeKey,
         date,
         title: title.trim() || undefined,
         notes: notes.trim() || undefined,
         data: cleanData,
       });
+      // Log exists — now attach any queued photos, then refresh the timeline.
+      if (queuedPhotos.length) {
+        setUploadingPhotos(true);
+        try {
+          for (const qp of queuedPhotos) {
+            try {
+              await uploadPhotoFile(`/logs/${created.id}/photos`, qp.file);
+            } catch (e) {
+              toast.error(`Photo "${qp.file.name}" failed: ${(e as Error).message}`);
+            }
+          }
+        } finally {
+          setUploadingPhotos(false);
+        }
+        qc.invalidateQueries({ queryKey: qk.logs(item.id) });
+      }
       reset();
     } catch (e) {
       toast.error((e as Error).message);
@@ -400,9 +507,58 @@ function LogAddForm({ item, collection }: { item: Item; collection: CollectionFu
         </div>
       </div>
 
+      {/* Photo attach: queue files now, upload to the log after it's created. */}
+      <div
+        className={`log-photo-add ${photoDrag ? 'drag' : ''}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setPhotoDrag(true);
+        }}
+        onDragLeave={() => setPhotoDrag(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setPhotoDrag(false);
+          if (e.dataTransfer.files?.length) queuePhotos(e.dataTransfer.files);
+        }}
+      >
+        <label className="log-photo-btn">
+          <Icon name="camera" size={15} /> Add photos
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            hidden
+            onChange={(e) => {
+              if (e.target.files?.length) queuePhotos(e.target.files);
+              e.target.value = '';
+            }}
+          />
+        </label>
+        {queuedPhotos.length === 0 ? (
+          <span className="log-photo-hint">Drop images here — attached when you save</span>
+        ) : (
+          <div className="log-photo-queue">
+            {queuedPhotos.map((qp) => (
+              <span key={qp.id} className="log-photo-thumb">
+                <img src={qp.previewUrl} alt={qp.file.name} />
+                <button
+                  type="button"
+                  aria-label={`Remove ${qp.file.name}`}
+                  onClick={() => removeQueuedPhoto(qp.id)}
+                >
+                  <Icon name="close" size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 'var(--sp-3)' }}>
-        <button type="button" className="btn btn-primary" onClick={submit} disabled={createLog.isPending}>
-          {createLog.isPending ? <Spinner /> : <Icon name="plus" size={16} />} Add {activeType.label.toLowerCase()}
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={pending}>
+          {pending ? <Spinner /> : <Icon name="plus" size={16} />}{' '}
+          {uploadingPhotos ? 'Attaching photos…' : `Add ${activeType.label.toLowerCase()}`}
         </button>
       </div>
     </div>
@@ -475,6 +631,7 @@ function LogEntryRow({
   onOpenPhotos: (photos: Photo[], index: number) => void;
 }) {
   const toast = useToast();
+  const qc = useQueryClient();
   const type = logTypeFor(collection, log.logTypeKey);
   const updateLog = useUpdateLog(item.id);
   const deleteLog = useDeleteLog(item.id);
@@ -483,6 +640,26 @@ function LogEntryRow({
   const [draftNotes, setDraftNotes] = useState(log.notes);
   const [draftTitle, setDraftTitle] = useState(log.title);
   const [draftDate, setDraftDate] = useState(log.date);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [addingPhotos, setAddingPhotos] = useState(false);
+
+  const addPhotos = async (files: FileList) => {
+    const list = Array.from(files).filter(isImageFile);
+    if (!list.length) return;
+    setAddingPhotos(true);
+    try {
+      for (const file of list) {
+        try {
+          await uploadPhotoFile(`/logs/${log.id}/photos`, file);
+        } catch (e) {
+          toast.error(`Upload failed: ${(e as Error).message}`);
+        }
+      }
+      qc.invalidateQueries({ queryKey: qk.logs(item.id) });
+    } finally {
+      setAddingPhotos(false);
+    }
+  };
 
   const fieldDefs = type.fields ?? [];
   const defByKey = useMemo(() => new Map(fieldDefs.map((f) => [f.key, f])), [fieldDefs]);
@@ -515,6 +692,29 @@ function LogEntryRow({
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span className="tl-date">{formatDate(log.date)}</span>
+            <button
+              type="button"
+              className="btn-icon btn-ghost no-print"
+              aria-label="Add photo"
+              title="Add photo"
+              disabled={addingPhotos}
+              onClick={() => photoInputRef.current?.click()}
+              style={{ width: 24, height: 24 }}
+            >
+              {addingPhotos ? <Spinner /> : <Icon name="camera" size={15} />}
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              hidden
+              onChange={(e) => {
+                if (e.target.files?.length) void addPhotos(e.target.files);
+                e.target.value = '';
+              }}
+            />
             <Menu
               align="right"
               items={menuItems}

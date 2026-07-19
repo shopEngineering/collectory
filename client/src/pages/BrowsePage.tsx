@@ -1016,7 +1016,7 @@ function TableView({
                     </label>
                   </td>
                 )}
-                {renderEditableTd(item, 'name', item.name)}
+                {renderEditableTd(item, 'name', item.name, 'cell-name')}
                 {tableFields.map((f) => {
                   const cellId = `field:${f.key}`;
                   const kind = INLINE_EDITABLE_TYPES[f.type];
@@ -1034,19 +1034,25 @@ function TableView({
                   'cell-money num',
                 )}
                 {renderEditableTd(item, 'quantity', formatQuantity(item.quantity), 'num')}
-                <td className="col-actions" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="btn-icon btn-ghost row-edit"
-                    aria-label={`Edit ${item.name}`}
-                    title="Edit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(item.id);
-                    }}
-                  >
-                    <Icon name="edit" size={15} />
-                  </button>
+                <td className="col-actions">
+                  {/* Clicks outside the pencil fall through to the row (nav). */}
+                  <span className="row-actions">
+                    <button
+                      type="button"
+                      className="btn-icon btn-ghost row-edit"
+                      aria-label={`Edit ${item.name}`}
+                      title="Edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(item.id);
+                      }}
+                    >
+                      <Icon name="edit" size={15} />
+                    </button>
+                    <span className="row-go" aria-hidden="true">
+                      <Icon name="chevron-right" size={16} />
+                    </span>
+                  </span>
                 </td>
               </tr>
             );
