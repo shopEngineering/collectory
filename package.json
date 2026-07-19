@@ -1,0 +1,70 @@
+{
+  "name": "collectory",
+  "productName": "Collectory",
+  "version": "1.0.0",
+  "description": "Local-first collection manager for firearms, ammunition, knives, coins, stamps, and anything else you collect. No servers, no cloud, no telemetry.",
+  "main": "electron/main.js",
+  "license": "MIT",
+  "author": "Collectory",
+  "repository": "github:lukedub/collectory",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"COLLECTORY_DATA_DIR=.data-dev nodemon --watch server --ext js,json,sql server/index.js\" \"npm --prefix client run dev\"",
+    "dev:app": "ELECTRON_START_URL=http://localhost:5173 electron .",
+    "server": "node server/index.js",
+    "build": "npm --prefix client run build",
+    "test": "node --test \"server/test/**/*.test.js\"",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "dist": "npm run build && electron-builder --mac --publish never",
+    "release": "npm run build && electron-builder --mac --publish always"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "better-sqlite3": "^12.2.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "papaparse": "^5.4.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.collectory.app",
+    "productName": "Collectory",
+    "directories": { "buildResources": "build", "output": "release" },
+    "files": [
+      "electron/**",
+      "server/**",
+      "!server/test/**",
+      "client/dist/**",
+      "package.json"
+    ],
+    "asarUnpack": ["**/*.node"],
+    "npmRebuild": true,
+    "afterPack": "build/afterPack.js",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [{ "target": "dmg" }, { "target": "zip" }],
+      "icon": "build/icon.png",
+      "identity": null,
+      "hardenedRuntime": false,
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "Collectory",
+      "iconSize": 100,
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "publish": [{ "provider": "github" }]
+  }
+}

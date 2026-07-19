@@ -1,0 +1,46 @@
+{
+  "key": "coins",
+  "name": "Coins",
+  "icon": "coin",
+  "color": "#b5952f",
+  "description": "Sheldon grading, certification and CAC tracking, mintage and composition, varieties and pedigrees, grading submission history.",
+  "fields": [
+    { "key": "country", "label": "Country / Issuer", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "denomination", "label": "Denomination", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "Morgan Dollar, Half Cent…" },
+    { "key": "year", "label": "Year", "type": "year", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "mint_mark", "label": "Mint Mark", "type": "text", "section": "Identity", "showInTable": true, "placeholder": "P, D, S, W, CC, O — blank = Philadelphia" },
+    { "key": "series_type", "label": "Series / Type", "type": "text", "section": "Identity", "placeholder": "Morgan, Walking Liberty, Barber…" },
+    { "key": "variety", "label": "Variety / Error", "type": "text", "section": "Identity", "placeholder": "VAM-4, FS-101, DDO, RPM…" },
+    { "key": "catalog_number", "label": "Catalog #", "type": "text", "section": "Identity", "placeholder": "KM#, Sheldon#, Overton#…" },
+    { "key": "pedigree", "label": "Pedigree / Ex-Collection", "type": "text", "section": "Identity", "placeholder": "Ex: Eliasberg" },
+    { "key": "composition", "label": "Composition", "type": "text", "section": "Specifications", "placeholder": "90% silver, copper-nickel clad…" },
+    { "key": "fineness", "label": "Fineness", "type": "number", "section": "Specifications", "placeholder": "0.900" },
+    { "key": "weight", "label": "Weight", "type": "number", "unit": "g", "section": "Specifications" },
+    { "key": "diameter", "label": "Diameter", "type": "number", "unit": "mm", "section": "Specifications" },
+    { "key": "edge_type", "label": "Edge", "type": "select", "section": "Specifications", "options": ["Plain", "Reeded", "Lettered", "Decorated", "Security"] },
+    { "key": "mintage", "label": "Mintage", "type": "number", "section": "Specifications" },
+    { "key": "strike", "label": "Strike", "type": "select", "section": "Specifications", "options": ["Business", "Proof", "Specimen", "Uncirculated / Mint Set"] },
+    { "key": "grade", "label": "Grade", "type": "select", "section": "Grading", "showInTable": true, "options": ["PO-1", "FR-2", "AG-3", "G-4", "G-6", "VG-8", "VG-10", "F-12", "F-15", "VF-20", "VF-25", "VF-30", "VF-35", "XF-40", "XF-45", "AU-50", "AU-53", "AU-55", "AU-58", "MS-60", "MS-61", "MS-62", "MS-63", "MS-64", "MS-65", "MS-66", "MS-67", "MS-68", "MS-69", "MS-70", "PR-63", "PR-64", "PR-65", "PR-66", "PR-67", "PR-68", "PR-69", "PR-70"] },
+    { "key": "certified", "label": "Certified / Slabbed", "type": "checkbox", "section": "Grading" },
+    { "key": "cert_service", "label": "Grading Service", "type": "select", "section": "Grading", "options": ["PCGS", "NGC", "ANACS", "ICG", "CACG", "Other"] },
+    { "key": "cert_number", "label": "Cert Number", "type": "text", "section": "Grading", "help": "Verifiable at pcgs.com/cert or ngccoin.com/certlookup" },
+    { "key": "cac_sticker", "label": "CAC Sticker", "type": "checkbox", "section": "Grading" },
+    { "key": "designation", "label": "Designation", "type": "text", "section": "Grading", "placeholder": "FB, FS, FH, FBL, CAM, DCAM, RD, RB, BN…" },
+    { "key": "problems", "label": "Problems / Details Grade", "type": "text", "section": "Grading", "placeholder": "Cleaned, scratched, environmental damage…" },
+    { "key": "holder_type", "label": "Holder", "type": "select", "section": "Storage", "options": ["Raw", "Slab", "2x2 Flip", "Air-Tite Capsule", "Album", "Tube", "Envelope"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "grading_submission", "label": "Grading Submission", "icon": "badge", "color": "#b5952f", "fields": [
+      { "key": "service", "label": "Service", "type": "select", "options": ["PCGS", "NGC", "ANACS", "ICG", "CACG"] },
+      { "key": "tier", "label": "Tier", "type": "text", "placeholder": "Economy, Regular, Express…" },
+      { "key": "cost", "label": "Cost", "type": "currency" },
+      { "key": "result_grade", "label": "Result Grade", "type": "text" },
+      { "key": "cert_number", "label": "Cert Number", "type": "text" }
+    ] },
+    { "key": "storage_change", "label": "Storage Change", "icon": "archive", "color": "#64748b", "fields": [
+      { "key": "new_location", "label": "New Location", "type": "text" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

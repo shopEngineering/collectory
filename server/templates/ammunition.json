@@ -1,0 +1,35 @@
+{
+  "key": "ammunition",
+  "name": "Ammunition",
+  "icon": "ammo",
+  "color": "#7d5a34",
+  "description": "Round-count inventory by lot with low-stock alerts. Range sessions on your firearms deduct from here automatically.",
+  "fields": [
+    { "key": "caliber", "label": "Cartridge / Caliber", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "9mm Luger, .223 Rem, 12 ga 2¾\"…" },
+    { "key": "manufacturer", "label": "Manufacturer", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "product_line", "label": "Product Line", "type": "text", "section": "Identity", "placeholder": "Gold Dot, M193, Critical Defense…" },
+    { "key": "bullet_weight", "label": "Bullet Weight", "type": "number", "unit": "gr", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "bullet_type", "label": "Bullet Type", "type": "select", "section": "Identity", "showInTable": true, "options": ["FMJ", "TMJ", "JHP", "HP", "BTHP", "OTM", "SP", "JSP", "LRN", "LSWC", "SWC", "Wadcutter", "Frangible", "Polymer Tip", "Tracer", "Blank", "Slug", "Buckshot", "Birdshot", "Other"] },
+    { "key": "case_material", "label": "Case", "type": "select", "section": "Identity", "options": ["Brass", "Nickel-Plated Brass", "Steel", "Lacquered Steel", "Aluminum", "Polymer", "Paper Hull", "Plastic Hull"] },
+    { "key": "origin", "label": "Origin", "type": "select", "section": "Details", "options": ["Factory", "Military Surplus", "Reload / Handload", "Match"] },
+    { "key": "designation", "label": "Purpose", "type": "select", "section": "Details", "options": ["Range / Practice", "Defense", "Hunting", "Match", "Collectible / Display"] },
+    { "key": "headstamp", "label": "Headstamp", "type": "text", "section": "Details", "placeholder": "LC 84, WCC, FC…" },
+    { "key": "lot_number", "label": "Lot Number", "type": "text", "section": "Details" },
+    { "key": "velocity", "label": "Muzzle Velocity", "type": "number", "unit": "fps", "section": "Details" },
+    { "key": "rounds_per_box", "label": "Rounds per Box", "type": "number", "section": "Details" },
+    { "key": "corrosive", "label": "Corrosive Primer", "type": "checkbox", "section": "Details", "help": "Common in military surplus — requires prompt cleaning" },
+    { "key": "country_of_origin", "label": "Country of Origin", "type": "text", "section": "Details" },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "usage", "label": "Rounds Used", "icon": "arrow-down", "color": "#8a4b3b", "fields": [
+      { "key": "rounds_used", "label": "Rounds Used", "type": "number", "unit": "rds" }
+    ] },
+    { "key": "restock", "label": "Restock", "icon": "arrow-up", "color": "#52684f", "fields": [
+      { "key": "rounds_added", "label": "Rounds Added", "type": "number", "unit": "rds" },
+      { "key": "price_paid", "label": "Price Paid", "type": "currency" },
+      { "key": "source", "label": "Source", "type": "text" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

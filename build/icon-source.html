@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Collectory Icon</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  #stage { width: 1024px; height: 1024px; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!--
+    macOS icon grid: the art sits inside a squircle occupying ~816px of the
+    1024px canvas (~10% transparent padding all round), matching Apple's
+    rounded-rect icon template. Everything below is measured against a 1024 box.
+  -->
+  <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Vertical forest-green gradient: lighter at top, deeper at base. -->
+      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#274d36"/>
+        <stop offset="0.55" stop-color="#20402c"/>
+        <stop offset="1"    stop-color="#173021"/>
+      </linearGradient>
+
+      <!-- Brass gradient for the monogram: warm antique gold. -->
+      <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#e0c584"/>
+        <stop offset="0.5"  stop-color="#c9a961"/>
+        <stop offset="1"    stop-color="#a8863f"/>
+      </linearGradient>
+
+      <!-- Subtle top sheen so the flat surface reads as premium, not plastic. -->
+      <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#ffffff" stop-opacity="0.06"/>
+        <stop offset="0.35" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+
+      <!--
+        Apple-style squircle (continuous-curvature superellipse) for the tile.
+        Box: 104..920 (816px). Corner smoothing tuned so the sides are nearly
+        straight and the corners flow smoothly, matching the macOS icon mask
+        rather than a plain rounded rect or an egg. Control offsets derived from
+        the iOS "squircle" constants scaled to a 128px corner radius.
+      -->
+      <clipPath id="squircleClip">
+        <path d="
+          M 104 456
+          C 104 296, 104 216, 154 166
+          C 204 116, 284 116, 444 116
+          L 580 116
+          C 740 116, 820 116, 870 166
+          C 920 216, 920 296, 920 456
+          L 920 568
+          C 920 728, 920 808, 870 858
+          C 820 908, 740 908, 580 908
+          L 444 908
+          C 284 908, 204 908, 154 858
+          C 104 808, 104 728, 104 568
+          Z"/>
+      </clipPath>
+    </defs>
+
+    <!-- Tile body -->
+    <g clip-path="url(#squircleClip)">
+      <rect x="104" y="104" width="816" height="816" fill="url(#bg)"/>
+      <rect x="104" y="104" width="816" height="816" fill="url(#sheen)"/>
+    </g>
+
+    <!-- Fine inner border: same squircle, inset 26px from the tile edge. -->
+    <path d="
+      M 130 456
+      C 130 306, 130 232, 178 184
+      C 226 136, 300 136, 450 136
+      L 574 136
+      C 724 136, 798 136, 846 184
+      C 894 232, 894 306, 894 456
+      L 894 568
+      C 894 718, 894 792, 846 840
+      C 798 888, 724 888, 574 888
+      L 450 888
+      C 300 888, 226 888, 178 840
+      C 130 792, 130 718, 130 568
+      Z"
+      fill="none" stroke="#c9a961" stroke-opacity="0.26" stroke-width="4"/>
+
+    <!--
+      Monogram "C": a thick brass ring with a gap on the right (opening toward
+      ~ -35°..35°). Drawn as an arc stroke. Center (512,512), radius 210,
+      stroke 84 → reads as a heavy, confident letterform.
+      The arc runs from +38° clockwise around to -38° (i.e. the long way),
+      leaving a ~76° gap on the right — the mouth of the C.
+    -->
+    <g>
+      <!-- C ring. r=210 about center (512,512); gap centered on the right,
+           symmetric ±40°. start +40° -> (672.9, 377.0);
+           end -40° -> (672.9, 647.0); sweep the long way (top-left-bottom). -->
+      <path d="
+        M 672.9 377.0
+        A 210 210 0 1 0 672.9 647.0"
+        fill="none" stroke="url(#brass)" stroke-width="84" stroke-linecap="round"/>
+
+      <!-- 2x2 grid of specimen dots, centered in the ring.
+           Grid pitch 96, dot radius 30, centered on (512,512):
+           columns at 464 & 560, rows at 464 & 560. -->
+      <circle cx="464" cy="464" r="30" fill="url(#brass)"/>
+      <circle cx="560" cy="464" r="30" fill="url(#brass)"/>
+      <circle cx="464" cy="560" r="30" fill="url(#brass)"/>
+      <circle cx="560" cy="560" r="30" fill="url(#brass)"/>
+    </g>
+  </svg>
+</div>
+</body>
+</html>

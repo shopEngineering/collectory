@@ -1,0 +1,9 @@
+node_modules/
+client/node_modules/
+client/dist/
+release/
+.data-dev/
+.playwright-mcp/
+.DS_Store
+*.log
+npm-debug.log*

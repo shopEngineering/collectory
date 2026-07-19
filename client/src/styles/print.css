@@ -1,0 +1,168 @@
+/* Print styles — used chiefly by the insurance report and print-item. */
+
+@media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+
+  :root,
+  [data-theme='dark'],
+  [data-theme='light'] {
+    --bg: #fff;
+    --surface: #fff;
+    --ink: #111;
+    --ink-2: #222;
+    --ink-3: #444;
+    --brass: #7a5f28;
+    --hairline: #ccc;
+  }
+
+  body {
+    background: #fff;
+    color: #111;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body::before {
+    display: none;
+  }
+
+  .app-shell {
+    display: block;
+  }
+  .sidebar,
+  .topbar,
+  .no-print,
+  .form-actions,
+  .toast-stack {
+    display: none !important;
+  }
+  .main,
+  .page {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .report-cover {
+    page-break-after: avoid;
+  }
+  .report-group {
+    page-break-inside: auto;
+  }
+  .report-row,
+  tr {
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  a[href]::after {
+    content: '';
+  }
+}
+
+/* On-screen report layout (also readable before printing) */
+.report {
+  background: #fff;
+  color: #14140f;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--sp-6);
+  border-radius: var(--r-md);
+  font-family: var(--font-ui);
+}
+[data-theme='dark'] .report {
+  box-shadow: var(--shadow-lg);
+}
+.report-cover {
+  border-bottom: 2px solid #14140f;
+  padding-bottom: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.report-cover h1 {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  color: #14140f;
+}
+.report-cover .report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+  font-size: 13px;
+  color: #444;
+}
+.report-cover .report-meta b {
+  font-family: var(--font-serif);
+  color: #14140f;
+  font-variant-numeric: tabular-nums;
+}
+.report-group {
+  margin-bottom: var(--sp-6);
+}
+.report-group h2 {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  color: #14140f;
+  border-bottom: 1px solid #999;
+  padding-bottom: 6px;
+  margin-bottom: var(--sp-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.report-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+  border-bottom: 1px solid #999;
+  padding: 6px 8px;
+}
+.report-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #ddd;
+  color: #222;
+  vertical-align: middle;
+}
+.report-table .r-photo {
+  width: 54px;
+}
+.report-table .r-photo img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+}
+.report-table .r-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.report-table .r-name {
+  font-weight: 600;
+  color: #14140f;
+}
+.report-total {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: #14140f;
+  border-top: 2px solid #14140f;
+  padding-top: var(--sp-3);
+  margin-top: var(--sp-4);
+  font-variant-numeric: tabular-nums;
+}
+.report-subtotal {
+  font-family: var(--font-serif);
+  font-variant-numeric: tabular-nums;
+}

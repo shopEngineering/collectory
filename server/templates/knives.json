@@ -1,0 +1,44 @@
+{
+  "key": "knives",
+  "name": "Knives",
+  "icon": "knife",
+  "color": "#46647a",
+  "description": "Makers, blade steels, grinds and locks, NKCA-style condition grading, sharpening and maintenance history.",
+  "fields": [
+    { "key": "maker", "label": "Maker / Brand", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "Case, Benchmade, custom maker…" },
+    { "key": "model", "label": "Model / Pattern", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "Model or pattern # (e.g. Case 6254)" },
+    { "key": "knife_type", "label": "Type", "type": "select", "section": "Identity", "showInTable": true, "options": ["Folding", "Fixed Blade", "Automatic", "OTF", "Balisong", "Multi-Blade / Traditional", "Sword", "Other"] },
+    { "key": "designer", "label": "Designer", "type": "text", "section": "Identity" },
+    { "key": "country_of_origin", "label": "Country of Origin", "type": "text", "section": "Identity" },
+    { "key": "production_year", "label": "Production Year", "type": "year", "section": "Identity", "help": "Case dot system and tang stamps date many knives" },
+    { "key": "serial_edition", "label": "Serial / Edition #", "type": "text", "section": "Identity", "placeholder": "e.g. 042/500" },
+    { "key": "tang_stamp", "label": "Tang Stamp", "type": "text", "section": "Identity" },
+    { "key": "blade_steel", "label": "Blade Steel", "type": "text", "section": "Blade", "showInTable": true, "showOnCard": true, "placeholder": "S30V, 1095, M390, MagnaCut…" },
+    { "key": "blade_length", "label": "Blade Length", "type": "number", "unit": "in", "section": "Blade", "showInTable": true },
+    { "key": "blade_shape", "label": "Blade Shape", "type": "select", "section": "Blade", "options": ["Drop Point", "Clip Point", "Tanto", "Reverse Tanto", "Wharncliffe", "Sheepsfoot", "Spear Point", "Dagger", "Bowie", "Trailing Point", "Hawkbill", "Recurve", "Other"] },
+    { "key": "grind", "label": "Grind", "type": "select", "section": "Blade", "options": ["Hollow", "Full Flat", "High Flat", "Saber", "Scandi", "Convex", "Chisel"] },
+    { "key": "blade_finish", "label": "Blade Finish", "type": "text", "section": "Blade", "placeholder": "Satin, stonewash, DLC…" },
+    { "key": "edge", "label": "Edge", "type": "select", "section": "Blade", "options": ["Plain", "Serrated", "Combo"] },
+    { "key": "overall_length", "label": "Overall Length", "type": "number", "unit": "in", "section": "Blade" },
+    { "key": "weight", "label": "Weight", "type": "number", "unit": "oz", "section": "Blade" },
+    { "key": "handle_material", "label": "Handle Material", "type": "text", "section": "Handle & Lock", "placeholder": "G10, jigged bone, titanium, stag…" },
+    { "key": "lock_type", "label": "Lock", "type": "select", "section": "Handle & Lock", "options": ["Liner Lock", "Frame Lock", "Back Lock", "Slip Joint", "Crossbar / AXIS", "Compression", "Button Lock", "Friction", "Collar / Ring", "Fixed — N/A"] },
+    { "key": "deployment", "label": "Deployment", "type": "select", "section": "Handle & Lock", "options": ["Nail Nick", "Thumb Stud", "Thumb Hole", "Flipper", "Assisted", "Automatic", "Two-Hand"] },
+    { "key": "pocket_clip", "label": "Pocket Clip", "type": "checkbox", "section": "Handle & Lock" },
+    { "key": "condition", "label": "Condition", "type": "select", "section": "Condition", "showInTable": true, "options": ["Mint", "Near Mint", "Excellent", "Very Good", "Good", "Fair", "Poor"] },
+    { "key": "blade_play", "label": "Blade Play", "type": "select", "section": "Condition", "options": ["None", "Slight", "Moderate"] },
+    { "key": "factory_edge", "label": "Factory Edge", "type": "checkbox", "section": "Condition", "help": "Never sharpened" },
+    { "key": "included_extras", "label": "Included Extras", "type": "multiselect", "section": "Condition", "options": ["Box", "Papers / COA", "Sheath", "Pouch"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "sharpening", "label": "Sharpening", "icon": "edge", "color": "#46647a", "fields": [
+      { "key": "method", "label": "Method", "type": "select", "options": ["Whetstone", "Guided System", "Belt", "Strop Only", "Professional"] },
+      { "key": "edge_angle", "label": "Edge Angle", "type": "number", "unit": "°" }
+    ] },
+    { "key": "maintenance", "label": "Maintenance", "icon": "wrench", "color": "#64748b", "fields": [
+      { "key": "work_done", "label": "Work Done", "type": "text", "placeholder": "Oiled pivot, removed rust spot…" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

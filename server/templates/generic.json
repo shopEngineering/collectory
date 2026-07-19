@@ -1,0 +1,23 @@
+{
+  "key": "generic",
+  "name": "Custom Collection",
+  "icon": "box",
+  "color": "#64748b",
+  "description": "A clean starting point — a few sensible fields you can reshape into anything: watches, cameras, records, memorabilia…",
+  "fields": [
+    { "key": "category", "label": "Category", "type": "text", "section": "Details" },
+    { "key": "maker", "label": "Maker / Brand", "type": "text", "section": "Details", "showInTable": true, "showOnCard": true },
+    { "key": "model", "label": "Model / Variant", "type": "text", "section": "Details", "showInTable": true },
+    { "key": "year", "label": "Year", "type": "year", "section": "Details", "showInTable": true },
+    { "key": "origin", "label": "Origin / Country", "type": "text", "section": "Details" },
+    { "key": "serial_marks", "label": "Serial / Markings", "type": "text", "section": "Details" },
+    { "key": "condition", "label": "Condition", "type": "select", "section": "Details", "showInTable": true, "options": ["Mint", "Excellent", "Very Good", "Good", "Fair", "Poor"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "maintenance", "label": "Maintenance", "icon": "wrench", "color": "#64748b", "fields": [
+      { "key": "work_done", "label": "Work Done", "type": "text" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}

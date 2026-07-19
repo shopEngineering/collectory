@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Collectory Icon — Full Bleed</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #stage { width: 1024px; height: 1024px; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<!--
+  Full-bleed variant for iOS home-screen (apple-touch-icon): iOS masks the
+  corners itself, so this fills the entire 1024 square with the green gradient
+  (no squircle, no transparency) and enlarges the motif slightly to compensate
+  for the corner crop.
+-->
+<div id="stage">
+  <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#274d36"/>
+        <stop offset="0.55" stop-color="#20402c"/>
+        <stop offset="1"    stop-color="#173021"/>
+      </linearGradient>
+      <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#e0c584"/>
+        <stop offset="0.5"  stop-color="#c9a961"/>
+        <stop offset="1"    stop-color="#a8863f"/>
+      </linearGradient>
+      <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0"    stop-color="#ffffff" stop-opacity="0.06"/>
+        <stop offset="0.35" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Full-bleed background -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#sheen)"/>
+
+    <!-- Motif scaled up ~1.18x about center to survive the iOS corner crop.
+         C ring r=248 (was 210), stroke 98, dots pitch 112 / radius 35. -->
+    <g>
+      <!-- C ring: gap centered right, ±40°. r=248 about (512,512).
+           start +40° -> 512+248cos40=512+190.0=702.0, 512-248sin40=512-159.4=352.6
+           end   -40° -> 702.0, 671.4 -->
+      <path d="
+        M 702.0 352.6
+        A 248 248 0 1 0 702.0 671.4"
+        fill="none" stroke="url(#brass)" stroke-width="98" stroke-linecap="round"/>
+
+      <!-- 2x2 dots, pitch 112, radius 35: cols 456/568, rows 456/568 -->
+      <circle cx="456" cy="456" r="35" fill="url(#brass)"/>
+      <circle cx="568" cy="456" r="35" fill="url(#brass)"/>
+      <circle cx="456" cy="568" r="35" fill="url(#brass)"/>
+      <circle cx="568" cy="568" r="35" fill="url(#brass)"/>
+    </g>
+  </svg>
+</div>
+</body>
+</html>

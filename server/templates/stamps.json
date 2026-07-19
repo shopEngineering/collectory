@@ -1,0 +1,47 @@
+{
+  "key": "stamps",
+  "name": "Stamps",
+  "icon": "stamp",
+  "color": "#7b4b5a",
+  "description": "Scott and alternate catalog numbers, perforation and watermark detail, gum/hinge condition, formats from singles to plate blocks, expertizing history.",
+  "fields": [
+    { "key": "country", "label": "Country", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true },
+    { "key": "scott_number", "label": "Scott #", "type": "text", "section": "Identity", "showInTable": true, "showOnCard": true, "placeholder": "C3a, 245, B12…" },
+    { "key": "alt_catalog", "label": "Other Catalog #", "type": "text", "section": "Identity", "placeholder": "SG / Michel / Yvert" },
+    { "key": "issue_year", "label": "Issue Year", "type": "year", "section": "Identity", "showInTable": true },
+    { "key": "denomination", "label": "Denomination", "type": "text", "section": "Identity", "showOnCard": true, "placeholder": "2¢, 2½d…" },
+    { "key": "color", "label": "Color", "type": "text", "section": "Identity", "placeholder": "Carmine rose…" },
+    { "key": "series", "label": "Series / Set", "type": "text", "section": "Identity" },
+    { "key": "format", "label": "Format", "type": "select", "section": "Identity", "showInTable": true, "options": ["Single", "Pair", "Strip of 3", "Strip of 4", "Strip of 5", "Block", "Plate Block", "PNC Strip of 3", "PNC Strip of 5", "Se-tenant", "Full Sheet", "Booklet Pane", "Souvenir Sheet", "First Day Cover", "On Cover", "On Piece"] },
+    { "key": "plate_number", "label": "Plate Number", "type": "text", "section": "Identity" },
+    { "key": "perforation", "label": "Perforation", "type": "text", "section": "Specifications", "placeholder": "11 × 10.5, imperforate…" },
+    { "key": "watermark", "label": "Watermark", "type": "text", "section": "Specifications", "placeholder": "Wmk 191, none…" },
+    { "key": "printing_method", "label": "Printing Method", "type": "select", "section": "Specifications", "options": ["Engraved / Intaglio", "Lithographed", "Offset", "Letterpress", "Photogravure", "Embossed", "Other"] },
+    { "key": "paper", "label": "Paper / Variety", "type": "text", "section": "Specifications", "placeholder": "Wove, laid, granite…" },
+    { "key": "mint_used", "label": "Mint / Used", "type": "select", "section": "Condition & Grading", "showInTable": true, "options": ["Mint", "Unused", "Used", "CTO", "Proof / Reprint"] },
+    { "key": "gum_condition", "label": "Gum / Hinge", "type": "select", "section": "Condition & Grading", "options": ["MNH — Never Hinged", "LH — Lightly Hinged", "Hinged", "Heavy Hinged", "Hinge Remnant", "Original Gum", "No Gum", "Regummed"] },
+    { "key": "grade", "label": "Grade", "type": "select", "section": "Condition & Grading", "options": ["Superb", "XF-Superb", "XF", "VF-XF", "VF", "F-VF", "Fine", "Average", "Good", "Space Filler"] },
+    { "key": "centering", "label": "Centering", "type": "text", "section": "Condition & Grading", "placeholder": "70/30" },
+    { "key": "cancellation", "label": "Cancel / Postmark", "type": "text", "section": "Condition & Grading", "placeholder": "CDS, fancy cork, SOTN…" },
+    { "key": "faults", "label": "Faults", "type": "text", "section": "Condition & Grading", "placeholder": "Thin, crease, short perf — or sound" },
+    { "key": "expertized", "label": "Expertized / Certificate", "type": "checkbox", "section": "Condition & Grading" },
+    { "key": "cert_service", "label": "Expertizing Service", "type": "select", "section": "Condition & Grading", "options": ["PF", "PSE", "PSAG", "APS / APEX", "Other"] },
+    { "key": "cert_number", "label": "Cert Number", "type": "text", "section": "Condition & Grading" },
+    { "key": "pedigree", "label": "Pedigree / Ex-Collection", "type": "text", "section": "Condition & Grading", "placeholder": "Ex: Caspary" },
+    { "key": "album_page", "label": "Album / Page", "type": "text", "section": "Storage", "placeholder": "Scott National Vol. 2, p. 14" },
+    { "key": "mount_type", "label": "Mount", "type": "select", "section": "Storage", "options": ["Hingeless Mount", "Hinged", "Stock Page", "Glassine", "Cover Sleeve"] },
+    { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage" }
+  ],
+  "logTypes": [
+    { "key": "expertizing", "label": "Expertizing", "icon": "badge", "color": "#7b4b5a", "fields": [
+      { "key": "service", "label": "Service", "type": "select", "options": ["PF", "PSE", "PSAG", "APS / APEX", "Other"] },
+      { "key": "opinion", "label": "Opinion", "type": "select", "options": ["Genuine", "Not Genuine", "Genuine with Alterations"] },
+      { "key": "cost", "label": "Cost", "type": "currency" },
+      { "key": "cert_number", "label": "Cert Number", "type": "text" }
+    ] },
+    { "key": "storage_change", "label": "Storage Change", "icon": "archive", "color": "#64748b", "fields": [
+      { "key": "new_location", "label": "New Location", "type": "text" }
+    ] },
+    { "key": "note", "label": "Note", "icon": "note", "color": "#6b7280", "fields": [] }
+  ]
+}
