@@ -145,3 +145,32 @@ All inside one transaction per log write.
 - `field.<key>=<value>` list filters do exact JSON match — good for select/checkbox fields.
 - Global `⌘K`/search: `GET /api/search?q=` returns `{results:[{item, collectionName, snippet}]}` (≤50),
   snippet wraps matches in `[...]`.
+
+## 2026-07-19: v1.1 magazines & item references (revised mid-build)
+
+**Design pivot:** magazines were first built as a collection template per the original §5.2, then
+reshaped per user decision to **child records of a firearm item** ("children of the firearms; a
+magazine can hold certain ammunition"). No `magazines.json` template exists.
+
+- **Migration 002** `field_defs.ref_template` — new field types `item_ref`/`item_refs` (+ existing
+  `ammo_ref`) carry an optional `refTemplate`; round-trips through templates, `PUT /fields`,
+  `GET /collections/:id` (mappers + `insertFields` updated).
+- **Migration 003** `magazines` table — child of items (`ON DELETE CASCADE`): name, manufacturer,
+  capacity, caliber, quantity, `holds_ammo_json` (ammo item ids), loaded, `loaded_with`,
+  loaded_rounds, notes, sort_order. Loading has NO quantity effect on ammo lots (deliberate §5.2
+  rule; only range-session firing deducts).
+- **`services/references.js`** — `itemChoices()` (template/q/excludeItemId filters; excludes
+  trashed + sold/traded/gifted; FTS or name-LIKE for q; limit 200) and `related()` (outgoing ref
+  fields; referencedBy via json_each over fields_json — handles scalar and array values; synthetic
+  `magazines` "In magazines of" group from the magazines table [holds OR loaded_with]; synthetic
+  `used_with` group from range_session logs' `ammo_item_id`).
+- **Routes:** `GET /api/item-choices` + `GET /api/ammo-choices` alias (adds legacy `caliber` =
+  `hint`) in `routes/misc.js`; `GET /api/items/:id/related` in `routes/items.js`;
+  `GET/POST /api/items/:id/magazines`, `PATCH/DELETE /api/magazines/:id` in new
+  `routes/magazines.js` (wired in index.js).
+- **Templates:** firearms += `associated_ammo` (item_refs→ammunition, section "Ammunition").
+- **Tests:** `references.test.js` (4: template refTemplate persistence + no magazines template,
+  item-choices filtering/shape/exclusions, related both directions + used_with, ammo-choices
+  alias) and `magazines.test.js` (3: child CRUD + validation, no-quantity-effect on load,
+  "In magazines of" related + parent-delete cascade). `migrations.test.js` idempotency assertion
+  made count-stable instead of hard-coded 1. Suite: **41 pass**.

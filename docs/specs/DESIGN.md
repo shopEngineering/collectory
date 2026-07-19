@@ -322,37 +322,41 @@ server treats value as number), `cleaning`, `modification`, `appraisal`; ammunit
   collection with per-group subtotals, item rows as thumbnail table (photo, name, serial/key
   identity fields, condition, acquired date/price, current value), grand total repeated at end.
 
-### 5.2 v1.1 addendum — magazines & item references (binding)
+### 5.2 v1.1 addendum — magazines & item references (binding, as built)
 
 - **Field types += `item_ref` (single) and `item_refs` (multi):** FieldDef gains optional
-  `refTemplate` (a template key, or absent = any item). Stored values: item id (number) / array of
-  ids. `ammo_ref` remains as sugar for `item_ref` + `refTemplate: 'ammunition'` (backcompat).
+  `refTemplate` (a template key, or absent = any item; DB column `field_defs.ref_template`,
+  migration 002). Stored values: item id (number) / array of ids. `ammo_ref` remains as sugar for
+  `item_ref` + `refTemplate: 'ammunition'` (backcompat).
 - **`GET /api/item-choices?template=&q=&excludeItemId=`** generalizes `/api/ammo-choices` (which
-  stays as an alias): → `[{id, name, collectionId, collectionName, quantity, thumbUrl, hint}]`
-  (`hint` = caliber field when present). Excludes trashed + former-status items.
+  stays as an alias, adding a legacy `caliber` mirror of `hint`): →
+  `[{id, name, collectionId, collectionName, quantity, thumbUrl, hint}]` (`hint` = caliber field
+  when present). Excludes trashed + former-status items.
 - **`GET /api/items/:id/related`** → `{references: [{fieldKey, fieldLabel, items: Choice[]}],
   referencedBy: [{fieldKey, fieldLabel, templateKey, items: Choice[]}]}`. `referencedBy` scans
   `item_ref`/`item_refs`/`ammo_ref` field defs across collections and matches values containing the
-  id (json_each; fine at personal-collection scale). Also include range-log ammo usage: guns whose
-  `range_session` logs reference this ammo item appear under a synthetic `used_with` group.
-- **Magazines built-in template** (`server/templates/magazines.json`, icon key `magazine`, color
-  steel-gray #5b6673): Identity: manufacturer, model, `fits_firearms` (item_refs→firearms),
-  caliber, capacity (number rds), material (select: Steel, Aluminum, Polymer, Stainless), finish,
-  country_of_origin; Condition: condition select, spring_replaced (date), follower_type (text);
-  **Loaded state** (section "Loaded State"): `loaded` (checkbox), `loaded_with`
-  (ammo_ref, "Loaded With"), `loaded_rounds` (number rds); Storage: storage_location. Log types:
-  `reliability` (malfunction_type select: Failure to Feed, Failure to Eject, Double Feed,
-  Bolt Lock Failure, Other; firearm_used item_ref→firearms; rounds_through number), `maintenance`
-  (work_done), `note`. Core `quantity` = count of identical magazines.
-- **Firearms template +=** section "Ammunition & Magazines": `associated_ammo`
-  (item_refs→ammunition, "Ammunition for this firearm", help: pinned first in range-log picker).
+  id (json_each; fine at personal-collection scale). Synthetic groups on ammo items:
+  `magazines` ("In magazines of" — firearms owning a magazine child that holds or is loaded with
+  this ammo) and `used_with` (guns whose `range_session` logs reference this ammo item).
+- **Magazines are CHILD RECORDS of a firearm item — NOT a collection template** (user decision
+  2026-07-19, supersedes the original magazines-template design; no `magazines.json`, not offered
+  in the New-Collection picker). Table `magazines` (migration 003, `ON DELETE CASCADE` from the
+  parent item): name, manufacturer, capacity (rds), caliber, quantity (count of identical mags),
+  `holds_ammo_json` (ammo item ids the magazine accepts), loaded, `loaded_with` (ammo item id),
+  loaded_rounds, notes, sort_order. Endpoints: `GET/POST /api/items/:id/magazines`,
+  `PATCH/DELETE /api/magazines/:id` (API camelCase: `holdsAmmoIds`, `loadedWithId`, …).
+- **Firearms template +=** section "Ammunition": `associated_ammo` (item_refs→ammunition,
+  "Ammunition for this firearm", pinned first in the range-log ammo picker).
 - **Loaded-state semantics (deliberate):** loading a magazine does NOT decrement the ammo lot —
   lot quantity means rounds owned wherever stored; only firing (range-session linkage, §3) deducts.
-  Prevents double-counting. Documented in the template's `loaded_with` help text.
+  Prevents double-counting. Stated in the magazine form's `loaded_with` help text.
 - **Client:** FieldInput renders item_ref/item_refs pickers (search-as-you-type over item-choices,
   chips with remove for multi); spec sheet renders ref values as linked item chips; item detail
-  gains a "Related" card (right column): references + referencedBy groups; range-log ammo picker
-  sorts the gun's `associated_ammo` first with an "associated" marker. Icon set += `magazine`.
+  gains a "Related" card (right column, hidden when empty): references + referencedBy groups;
+  firearm detail gains a **"Magazines" tab** (templateKey `firearms` only): list/create/edit/delete
+  child magazines with holds/loaded ammo links + a "Log issue" action that drops a note log on the
+  gun; range-log ammo picker sorts the gun's `associated_ammo` first with an "associated" marker.
+  Icon set += `magazine`.
 - Existing collections are NOT auto-migrated (no real users pre-v1.1); new fields arrive via
   templates on new collections or manually via the field editor.
 

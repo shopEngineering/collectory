@@ -362,6 +362,7 @@ function TabbedPanels({ item, collection }: { item: Item; collection: Collection
 
       <div style={{ marginTop: 'var(--sp-4)' }}>
         {tab === 'activity' && <ActivityTab item={item} collection={collection} logs={logs ?? []} />}
+        {tab === 'magazines' && <MagazinesTab item={item} magazines={magazines ?? []} />}
         {tab === 'provenance' && <ProvenanceTab item={item} entries={provenance ?? []} />}
         {tab === 'value' && <ValueTab item={item} valuations={valuations ?? []} />}
         {tab === 'files' && <FilesTab item={item} attachments={attachments ?? []} />}
@@ -837,6 +838,272 @@ function LogEntryRow({
         }}
         onCancel={() => setConfirmDel(false)}
       />
+    </div>
+  );
+}
+
+// ---- Magazines tab (firearms only) -----------------------------------------
+// Magazines are child records of the firearm (v1.1 revised): each can hold
+// certain ammunition (holdsAmmoIds) and may be loaded with one. Loading NEVER
+// deducts from the ammo lot — only firing (range-session linkage) does.
+function MagazinesTab({ item, magazines }: { item: Item; magazines: Magazine[] }) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <div>
+      {magazines.length === 0 && !adding && (
+        <p style={{ color: 'var(--ink-4)', fontSize: 13, padding: '12px 0' }}>
+          No magazines recorded for this firearm yet.
+        </p>
+      )}
+      <div style={{ display: 'grid', gap: 'var(--sp-3)' }}>
+        {magazines.map((mag) => (
+          <MagazineRow key={mag.id} item={item} mag={mag} />
+        ))}
+      </div>
+      {adding ? (
+        <MagazineForm item={item} onDone={() => setAdding(false)} />
+      ) : (
+        <button type="button" className="btn no-print" style={{ marginTop: 'var(--sp-3)' }} onClick={() => setAdding(true)}>
+          <Icon name="plus" size={16} /> Add magazine
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MagazineRow({ item, mag }: { item: Item; mag: Magazine }) {
+  const toast = useToast();
+  const del = useDeleteMagazine(item.id);
+  const createLog = useCreateLog(item.id);
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  if (editing) {
+    return <MagazineForm item={item} mag={mag} onDone={() => setEditing(false)} />;
+  }
+
+  const meta = [
+    mag.manufacturer,
+    mag.capacity != null ? `${formatNumber(mag.capacity)} rds` : null,
+    mag.caliber,
+  ].filter(Boolean).join(' · ');
+
+  const logIssue = async () => {
+    try {
+      await createLog.mutateAsync({
+        logTypeKey: 'note',
+        date: todayISO(),
+        title: `Magazine issue — ${mag.name}`,
+      });
+      toast.success('Issue logged — add details in the Activity tab');
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const menuItems: MenuItemDef[] = [
+    { label: 'Edit', icon: 'edit', onClick: () => setEditing(true) },
+    { label: 'Log issue', icon: 'note', onClick: () => void logIssue() },
+    { label: 'Delete', icon: 'trash', danger: true, onClick: () => setConfirmDel(true) },
+  ];
+
+  return (
+    <div className="tl-card mag-row">
+      <div className="tl-head">
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13.5 }}>
+          <Icon name="magazine" size={16} />
+          {mag.name}
+          {mag.quantity > 1 && <span className="mag-qty">×{formatNumber(mag.quantity)}</span>}
+          {mag.loaded && <span className="mag-loaded-badge">Loaded</span>}
+        </span>
+        <Menu
+          align="right"
+          items={menuItems}
+          trigger={({ toggle, ref }) => (
+            <button ref={(el) => ref(el)} className="btn-icon btn-ghost no-print" aria-label="Magazine actions" onClick={toggle} style={{ width: 24, height: 24 }}>
+              <Icon name="kebab" size={15} />
+            </button>
+          )}
+        />
+      </div>
+      {meta && <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 4 }}>{meta}</div>}
+      {mag.holdsAmmoIds.length > 0 && (
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 6 }}>
+          Holds:{' '}
+          {mag.holdsAmmoIds.map((id, i) => (
+            <span key={id}>
+              {i > 0 && ', '}
+              <ItemNameRef id={id} />
+            </span>
+          ))}
+        </div>
+      )}
+      {mag.loaded && mag.loadedWithId != null && (
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 4 }}>
+          Loaded with{mag.loadedRounds != null ? ` ${formatNumber(mag.loadedRounds)} rds of` : ''}{' '}
+          <ItemNameRef id={mag.loadedWithId} />
+        </div>
+      )}
+      {mag.notes && (
+        <p style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 6, lineHeight: 1.5 }}>{mag.notes}</p>
+      )}
+
+      <ConfirmDialog
+        open={confirmDel}
+        title="Delete magazine?"
+        message={`Remove "${mag.name}" from this firearm? This does not affect any ammo lots.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={async () => {
+          setConfirmDel(false);
+          try {
+            await del.mutateAsync(mag.id);
+          } catch (e) {
+            toast.error((e as Error).message);
+          }
+        }}
+        onCancel={() => setConfirmDel(false)}
+      />
+    </div>
+  );
+}
+
+function MagazineForm({ item, mag, onDone }: { item: Item; mag?: Magazine; onDone: () => void }) {
+  const toast = useToast();
+  const create = useCreateMagazine(item.id);
+  const update = useUpdateMagazine(item.id);
+  const [name, setName] = useState(mag?.name ?? '');
+  const [manufacturer, setManufacturer] = useState(mag?.manufacturer ?? '');
+  const [capacity, setCapacity] = useState<number | null>(mag?.capacity ?? null);
+  const [caliber, setCaliber] = useState(mag?.caliber ?? '');
+  const [quantity, setQuantity] = useState<number>(mag?.quantity ?? 1);
+  const [holdsAmmoIds, setHoldsAmmoIds] = useState<number[]>(mag?.holdsAmmoIds ?? []);
+  const [loaded, setLoaded] = useState(mag?.loaded ?? false);
+  const [loadedWithId, setLoadedWithId] = useState<number | null>(mag?.loadedWithId ?? null);
+  const [loadedRounds, setLoadedRounds] = useState<number | null>(mag?.loadedRounds ?? null);
+  const [notes, setNotes] = useState(mag?.notes ?? '');
+  const pending = create.isPending || update.isPending;
+
+  const submit = async () => {
+    if (!name.trim()) {
+      toast.error('Magazine name is required');
+      return;
+    }
+    const body = {
+      name: name.trim(),
+      manufacturer: manufacturer.trim(),
+      capacity,
+      caliber: caliber.trim(),
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+      holdsAmmoIds,
+      loaded,
+      loadedWithId: loaded ? loadedWithId : null,
+      loadedRounds: loaded ? loadedRounds : null,
+      notes: notes.trim(),
+    };
+    try {
+      if (mag) await update.mutateAsync({ id: mag.id, body });
+      else await create.mutateAsync(body);
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 'var(--sp-4)', marginTop: 'var(--sp-3)' }}>
+      <div className="form-grid">
+        <div className="field">
+          <label className="field-label">Name</label>
+          <input className="input" type="text" value={name} placeholder="Factory 15rd, PMAG 30…" onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label className="field-label">Manufacturer</label>
+          <input className="input" type="text" value={manufacturer} placeholder="Magpul, OEM, MecGar…" onChange={(e) => setManufacturer(e.target.value)} />
+        </div>
+        <div className="field">
+          <label className="field-label">Capacity</label>
+          <div className="input-affix">
+            <input
+              className="input"
+              type="number"
+              inputMode="numeric"
+              value={capacity == null ? '' : String(capacity)}
+              onChange={(e) => setCapacity(e.target.value === '' ? null : Number(e.target.value))}
+            />
+            <span className="input-suffix">rds</span>
+          </div>
+        </div>
+        <div className="field">
+          <label className="field-label">Caliber</label>
+          <input className="input" type="text" value={caliber} placeholder="9mm Luger, 5.56 NATO…" onChange={(e) => setCaliber(e.target.value)} />
+        </div>
+        <div className="field">
+          <label className="field-label">Quantity</label>
+          <input
+            className="input"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={String(quantity)}
+            onChange={(e) => setQuantity(e.target.value === '' ? 1 : Number(e.target.value))}
+          />
+          <span className="field-help">Count of identical magazines</span>
+        </div>
+        <div className="field full">
+          <label className="field-label">Holds ammunition</label>
+          <ItemRefsPicker
+            value={holdsAmmoIds.length ? holdsAmmoIds : null}
+            onChange={(v) => setHoldsAmmoIds(v ?? [])}
+            refTemplate="ammunition"
+          />
+          <span className="field-help">Ammo from your inventory this magazine accepts</span>
+        </div>
+        <div className="field full">
+          <label className="checkbox-row">
+            <input type="checkbox" className="sr-only" checked={loaded} onChange={(e) => setLoaded(e.target.checked)} />
+            <span className={`checkbox-box ${loaded ? 'checked' : ''}`}>
+              <Icon name="check" size={14} />
+            </span>
+            <span style={{ fontSize: 13.5, color: 'var(--ink-2)' }}>Currently loaded</span>
+          </label>
+        </div>
+        {loaded && (
+          <>
+            <div className="field">
+              <label className="field-label">Loaded with</label>
+              <AmmoPicker value={loadedWithId} onChange={setLoadedWithId} />
+              <span className="field-help">
+                Loading does not deduct from the lot — only firing (a range session) does
+              </span>
+            </div>
+            <div className="field">
+              <label className="field-label">Loaded rounds</label>
+              <div className="input-affix">
+                <input
+                  className="input"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={loadedRounds == null ? '' : String(loadedRounds)}
+                  onChange={(e) => setLoadedRounds(e.target.value === '' ? null : Number(e.target.value))}
+                />
+                <span className="input-suffix">rds</span>
+              </div>
+            </div>
+          </>
+        )}
+        <div className="field full">
+          <label className="field-label">Notes</label>
+          <textarea className="textarea" value={notes} placeholder="Spring replaced, follower type, reliability notes…" onChange={(e) => setNotes(e.target.value)} />
+        </div>
+      </div>
+      <div className="row" style={{ justifyContent: 'flex-end', gap: 8, marginTop: 'var(--sp-3)' }}>
+        <button type="button" className="btn btn-ghost" onClick={onDone}>Cancel</button>
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={pending}>
+          {pending ? <Spinner /> : null} Save
+        </button>
+      </div>
     </div>
   );
 }

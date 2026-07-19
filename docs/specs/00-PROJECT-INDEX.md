@@ -40,5 +40,6 @@ no service worker, ad-hoc signing). Post-build decisions: sub-resource list enve
 - [ ] Import uncle's real myArmsCache/spreadsheet data via /import.
 - [ ] Real-iPad LAN/PWA acceptance test.
 - [ ] Decide on notarization ($99/yr) if distribution widens.
-- Note: two subagents this session reported phantom "instructions" that were never sent (ignored
-  both times, nothing acted on) — keep an eye on subagent-transcript integrity.
+- Session note (resolved): mid-build "mystery" messages to subagents turned out to be the user
+  steering an agent directly (magazines redesign → option #2, confirmed); one earlier ops-agent
+  "injected reminder" report was a benign misread of normal harness notices. No integrity issue.

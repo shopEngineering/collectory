@@ -251,3 +251,35 @@ underline/brass bar/pencil+chevron; double-click inline editing still opens.
 npm --prefix client install
 npm --prefix client run build   # tsc -b (strict) + vite build → client/dist
 ```
+
+## 2026-07-19: v1.1 magazines & item references (revised mid-build)
+
+Design pivot mid-build (user decision): magazines are child records of a firearm item, not a
+collection — see DESIGN §5.2 (as built).
+
+- **`api/types.ts`** — FieldType += `item_ref`/`item_refs`; FieldDef += `refTemplate?`;
+  `FieldValue` now includes `number[]` (item_refs id arrays); new `ItemChoice`, `RelatedGroup`,
+  `RelatedResponse`, `Magazine`, `MagazineInput`.
+- **`api/hooks.ts`** — `useItemChoices(refTemplate, q)` (keepPreviousData), `useRelated(itemId)`,
+  `useMagazines/useCreateMagazine/useUpdateMagazine/useDeleteMagazine` (invalidate
+  `['magazines',id]` + `['related']`); item create/update + log mutations also invalidate
+  `['item-choices']` + `['related']`.
+- **New `components/ItemRefPicker.tsx`** — `ItemRefPicker` (single: chosen chip with clear, else
+  search dropdown) and `ItemRefsPicker` (chips with remove + search dropdown). Debounced (180ms)
+  search over `/api/item-choices`; dropdown rows show thumb/name/collection · hint · qty; Enter
+  picks first match; outside-click closes. CSS: `.ref-chip/.ref-search/.ref-menu/.ref-option` in
+  features.css.
+- **`FieldInput.tsx`** — renders `item_ref`/`item_refs` via the pickers (item_refs is full-width);
+  `ammo_ref` → AmmoPicker with optional `associatedIds` threaded through `Field`.
+- **`AmmoPicker.tsx`** — sorts the gun's `associated_ammo` ids first with "★ … — associated"
+  option marker (native select).
+- **`ItemDetailPage.tsx`** — spec sheet renders ref values as `ItemNameRef` links; right column
+  gains `RelatedCard` (skipped when both directions empty; groups of linked `.ref-chip-link`
+  chips); **Magazines tab** (firearms template only): `MagazinesTab`/`MagazineRow`/`MagazineForm` —
+  list with ×qty + Loaded badge + "Holds:"/"Loaded with" ammo links, create/edit/delete, kebab
+  "Log issue" creates a titled note log on the gun. Form uses ItemRefsPicker (holds) + AmmoPicker
+  (loaded_with, help: loading never deducts).
+- **`Icon.tsx`** — `magazine` icon (box-mag silhouette: curved body, feed lips, witness holes,
+  floorplate); added to `COLLECTION_ICON_KEYS`.
+- Build: `tsc -b` strict + vite clean. Verified live on :7117 (Colt Python Magazines tab + ammo
+  Related card showing associated_ammo / In magazines of / used_with).

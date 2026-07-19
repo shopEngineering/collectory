@@ -1666,3 +1666,20 @@ table.data tbody td.editable-cell.editing {
   color: var(--ink-4);
   margin-bottom: 6px;
 }
+
+/* magazines tab (child records of a firearm) */
+.mag-qty {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-4);
+}
+.mag-loaded-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brass);
+  border: 1px solid color-mix(in srgb, var(--brass) 45%, transparent);
+  border-radius: 99px;
+  padding: 1px 7px;
+}
