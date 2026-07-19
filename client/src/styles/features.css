@@ -1155,3 +1155,230 @@
 .cmdk-foot .kbd {
   margin-right: 4px;
 }
+
+/* ================= BROWSE EDIT AFFORDANCES ================= */
+/* Pencil button on card hover (desktop) + always-visible on touch. */
+.item-card .card-edit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.item-card .card-edit:hover {
+  background: rgba(0, 0, 0, 0.62);
+}
+@media (any-hover: hover) {
+  .item-card:hover .card-edit {
+    opacity: 1;
+  }
+}
+/* Touch: no hover — keep the pencil visible so it stays reachable. */
+@media (any-hover: none) {
+  .item-card .card-edit {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+/* Hide the edit pencil in select mode (the card's checkbox owns that corner flow). */
+.grid-cards.select-mode .card-edit {
+  display: none;
+}
+
+/* Table row edit column (pencil) */
+table.data td.col-actions,
+table.data th.col-actions {
+  width: 44px;
+  padding-left: 0;
+  padding-right: 8px;
+  text-align: right;
+}
+.row-edit {
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.row-edit:hover {
+  color: var(--ink);
+}
+@media (any-hover: hover) {
+  table.data tbody tr:hover .row-edit {
+    opacity: 1;
+  }
+}
+@media (any-hover: none) {
+  .row-edit {
+    opacity: 1;
+  }
+}
+
+/* ================= INLINE TABLE CELL EDITING ================= */
+/* Editable-cell affordance on hover: a subtle dashed underline hint. */
+@media (any-hover: hover) {
+  table.data.editable tbody td.editable-cell:hover {
+    background: var(--brass-ghost);
+    box-shadow: inset 0 0 0 1px var(--brass-ring);
+    cursor: text;
+  }
+}
+table.data.editable tbody td.editable-cell {
+  transition: background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+/* While editing, drop the cell's own padding so the editor fills it. */
+table.data tbody td.editable-cell.editing {
+  padding: 4px 8px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--brass);
+}
+
+.cell-editor {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cell-editor .cell-input {
+  width: 100%;
+  min-width: 90px;
+  min-height: 32px;
+  height: 32px;
+  padding: 4px 8px;
+  /* ≥16px kills iOS zoom-on-focus; desktop tightens below (matches .input). */
+  font-size: 16px;
+  border-radius: var(--r-xs);
+  border-color: var(--brass);
+  background: var(--sunken);
+}
+@media (min-width: 900px) {
+  .cell-editor .cell-input {
+    font-size: 13px;
+  }
+}
+.cell-editor .cell-input:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px var(--brass-ghost);
+  background: var(--surface);
+}
+.cell-editor.currency .cell-input {
+  padding-left: 20px;
+}
+.cell-editor .cell-prefix {
+  position: absolute;
+  left: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+  pointer-events: none;
+  z-index: 1;
+}
+.cell-editor.checkbox,
+.cell-editor.rating {
+  min-height: 32px;
+}
+.cell-editor.rating .rating button {
+  padding: 0;
+}
+/* Subtle pending indicator: dim + spinner-less shimmer on the editing cell. */
+.cell-editor[data-pending] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cell-editor[data-pending]::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline-strong);
+  border-top-color: var(--brass);
+  animation: spin 0.7s linear infinite;
+}
+
+/* ================= SLIDE-OVER EDIT PANE ================= */
+.pane-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: flex-end;
+  animation: fade-in var(--dur) var(--ease);
+}
+.edit-pane {
+  width: 600px;
+  max-width: 100vw;
+  height: 100%;
+  height: 100dvh;
+  background: var(--bg-2);
+  border-left: 1px solid var(--hairline-strong);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  animation: pane-in var(--dur-slow) var(--ease);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@keyframes pane-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .edit-pane {
+    animation: none;
+  }
+}
+/* Full-screen sheet under 900px. */
+@media (max-width: 899px) {
+  .edit-pane {
+    width: 100vw;
+    border-left: none;
+  }
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--hairline);
+  flex: none;
+}
+.pane-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pane-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-5);
+  padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+}
+/* In the pane the form is a single column; the aside stacks below the fields. */
+.item-form.in-pane .form-layout {
+  grid-template-columns: 1fr;
+}
+.item-form.in-pane .form-aside {
+  position: static;
+}
+/* Sticky save bar sits at the bottom of the scrolling pane body. */
+.item-form.in-pane .form-actions {
+  background: color-mix(in srgb, var(--bg-2) 90%, transparent);
+}

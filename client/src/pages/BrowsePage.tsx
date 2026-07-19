@@ -1,11 +1,22 @@
 // Browse (route "/c/:collectionId") — grid/table toggle, search, status/field/tag filters,
 // sort menu, batch select → status/tag/delete. All filter/sort state mirrored to the URL.
 // View mode + grid density persist per-collection in localStorage. DESIGN §6.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Table view supports spreadsheet-style inline cell editing (double-click a cell);
+// grid + table rows expose a pencil affordance that opens a right slide-over edit pane
+// (mirrored to `?edit=<itemId>`).
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Menu, LoadingBlock, ErrorBlock, ConfirmDialog } from '../components/ui';
 import { StatusBadge, PhotoFill, EmptyState } from '../components/bits';
+import { EditPane } from '../components/EditPane';
+import {
+  InlineCellEditor,
+  CELL_STATUS_OPTIONS,
+  CELL_STATUS_LABELS,
+  type EditableCell,
+  type CellEditorKind,
+} from '../components/InlineCellEditor';
 import { useToast } from '../components/Toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCollection, useItems, useDeleteItem } from '../api/hooks';
@@ -42,6 +53,21 @@ const SORT_LABELS: Record<string, string> = Object.fromEntries(SORT_OPTIONS.map(
 const FIELD_SORT_KEY: Record<string, ItemSort> = {
   acquired_date: 'acquiredDate',
   acquired_price: 'acquiredPrice',
+};
+
+// Dynamic field types that support inline editing. multiselect/ammo_ref fall back
+// to the edit pane. textarea edits as a single-line text cell.
+const INLINE_EDITABLE_TYPES: Record<string, CellEditorKind | undefined> = {
+  text: 'text',
+  textarea: 'textarea',
+  number: 'number',
+  currency: 'currency',
+  date: 'date',
+  year: 'year',
+  select: 'select',
+  checkbox: 'checkbox',
+  url: 'url',
+  rating: 'rating',
 };
 
 // ---- value formatting ------------------------------------------------------
@@ -128,6 +154,7 @@ export function BrowsePage() {
   const cid = Number(collectionId);
   const navigate = useNavigate();
   const toast = useToast();
+  const qc = useQueryClient();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -183,6 +210,20 @@ export function BrowsePage() {
 
   const hasActiveFilters =
     !!urlQ || !!statusParam || !!tag || Object.keys(fieldFilters).length > 0;
+
+  // ---- Edit-pane URL state (?edit=<itemId>) ----
+  const editParam = searchParams.get('edit');
+  const editItemId = editParam && !Number.isNaN(Number(editParam)) ? Number(editParam) : null;
+  const openEdit = useCallback(
+    (id: number) => patchParams((p) => p.set('edit', String(id))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const closeEdit = useCallback(
+    () => patchParams((p) => p.delete('edit')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   // ---- Query ----
   const query: ItemQuery = useMemo(
@@ -248,6 +289,28 @@ export function BrowsePage() {
       if (d) next.set('dir', d);
       return next;
     });
+
+  // ---- Inline cell commit (table view) ----
+  // Applied to a single dynamic item id; useUpdateItem is per-id (rules of hooks),
+  // so we PATCH via the api client and invalidate the shared queries once (mirrors
+  // BatchBar). react-query re-fetch supplies the revert on error.
+  const commitCell = useCallback(
+    async (itemId: number, patch: Record<string, unknown>) => {
+      try {
+        await api.patch(`/items/${itemId}`, patch);
+        qc.invalidateQueries({ queryKey: ['items'] });
+        qc.invalidateQueries({ queryKey: ['item', itemId] });
+        qc.invalidateQueries({ queryKey: ['stats'] });
+        qc.invalidateQueries({ queryKey: ['collections'] });
+      } catch (e) {
+        toast.error((e as Error).message);
+        // Revert: re-fetch the list so the cell snaps back to server truth.
+        qc.invalidateQueries({ queryKey: ['items'] });
+        throw e;
+      }
+    },
+    [qc, toast],
+  );
 
   // ---- Batch selection ----
   const [selectMode, setSelectMode] = useState(false);
@@ -483,6 +546,7 @@ export function BrowsePage() {
           selected={selected}
           onToggleSelected={toggleSelected}
           onOpen={(id) => navigate(`/items/${id}`)}
+          onEdit={openEdit}
           onEnterSelect={(id) => {
             setSelectMode(true);
             setSelected(new Set([id]));
@@ -497,6 +561,8 @@ export function BrowsePage() {
           selected={selected}
           onToggleSelected={toggleSelected}
           onOpen={(id) => navigate(`/items/${id}`)}
+          onEdit={openEdit}
+          onCommitCell={commitCell}
           sort={sort}
           dir={dir}
           onSort={setSort}
@@ -514,6 +580,16 @@ export function BrowsePage() {
           toastSuccess={toast.success}
         />
       )}
+
+      {/* Slide-over edit pane (edit-only, existing items) */}
+      {editItemId != null && (
+        <EditPane
+          key={editItemId}
+          itemId={editItemId}
+          onClose={closeEdit}
+          onSaved={() => toast.success('Saved')}
+        />
+      )}
     </div>
   );
 }
@@ -528,6 +604,7 @@ function GridView({
   selected,
   onToggleSelected,
   onOpen,
+  onEdit,
   onEnterSelect,
   longPressTimer,
 }: {
@@ -539,6 +616,7 @@ function GridView({
   selected: Set<number>;
   onToggleSelected: (id: number) => void;
   onOpen: (id: number) => void;
+  onEdit: (id: number) => void;
   onEnterSelect: (id: number) => void;
   longPressTimer: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
 }) {
@@ -601,6 +679,22 @@ function GridView({
               </span>
             </label>
 
+            {/* Edit affordance — hover (desktop) + always-visible kebab-style on touch */}
+            {!selectMode && (
+              <button
+                type="button"
+                className="card-edit"
+                aria-label={`Edit ${item.name}`}
+                title="Edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(item.id);
+                }}
+              >
+                <Icon name="edit" size={15} />
+              </button>
+            )}
+
             <div className="card-photo">
               <PhotoFill src={item.thumbUrl} alt={item.name} />
             </div>
@@ -644,6 +738,12 @@ function GridView({
 }
 
 // ---- Table view ------------------------------------------------------------
+// Column identity for an open inline editor: which item row + which cell.
+interface OpenCell {
+  itemId: number;
+  cellId: string;
+}
+
 function TableView({
   items,
   tableFields,
@@ -651,6 +751,8 @@ function TableView({
   selected,
   onToggleSelected,
   onOpen,
+  onEdit,
+  onCommitCell,
   sort,
   dir,
   onSort,
@@ -662,11 +764,26 @@ function TableView({
   selected: Set<number>;
   onToggleSelected: (id: number) => void;
   onOpen: (id: number) => void;
+  onEdit: (id: number) => void;
+  onCommitCell: (itemId: number, patch: Record<string, unknown>) => Promise<void>;
   sort: ItemSort;
   dir: SortDir;
   onSort: (s: ItemSort) => void;
   onToggleDir: () => void;
 }) {
+  const [openCell, setOpenCell] = useState<OpenCell | null>(null);
+  // Single-click navigates, double-click edits. A short timer defers the row's
+  // click nav so an incoming dblclick can cancel it and open the editor instead.
+  const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingNav = useCallback(() => {
+    if (navTimer.current) {
+      clearTimeout(navTimer.current);
+      navTimer.current = null;
+    }
+  }, []);
+  // Clean up any pending nav timer on unmount.
+  useEffect(() => cancelPendingNav, [cancelPendingNav]);
+
   const sortHandler = (key: ItemSort) => () => {
     if (sort === key) onToggleDir();
     else onSort(key);
@@ -684,9 +801,153 @@ function TableView({
     return String(value);
   };
 
+  // Ordered editable cell ids per row, for Tab traversal.
+  const editableFieldDefs = useMemo(
+    () => tableFields.filter((f) => INLINE_EDITABLE_TYPES[f.type]),
+    [tableFields],
+  );
+  const rowCellOrder = useMemo(() => {
+    // name, [dynamic editable fields in column order], status, value, quantity
+    const order = ['name', ...editableFieldDefs.map((f) => `field:${f.key}`), 'status', 'currentValueCents', 'quantity'];
+    return order;
+  }, [editableFieldDefs]);
+
+  // Build the EditableCell descriptor for a given row + cellId.
+  const buildCell = useCallback(
+    (item: ItemSummary, cellId: string): EditableCell | null => {
+      if (cellId === 'name')
+        return { cellId, kind: 'text', value: item.name, toPatch: (v) => ({ name: v ?? '' }) };
+      if (cellId === 'status')
+        return {
+          cellId,
+          kind: 'select',
+          value: item.status,
+          options: CELL_STATUS_OPTIONS,
+          optionLabels: CELL_STATUS_LABELS,
+          toPatch: (v) => ({ status: v || 'owned' }),
+        };
+      if (cellId === 'quantity')
+        return {
+          cellId,
+          kind: 'number',
+          value: item.quantity,
+          toPatch: (v) => ({ quantity: v == null ? 1 : v }),
+        };
+      if (cellId === 'currentValueCents')
+        return {
+          cellId,
+          kind: 'currency',
+          value: item.currentValueCents,
+          toPatch: (v) => ({ currentValueCents: v }),
+        };
+      if (cellId === 'acquiredDate')
+        return {
+          cellId,
+          kind: 'date',
+          value: item.acquiredDate,
+          toPatch: (v) => ({ acquiredDate: v }),
+        };
+      if (cellId === 'acquiredPriceCents')
+        return {
+          cellId,
+          kind: 'currency',
+          value: item.acquiredPriceCents,
+          toPatch: (v) => ({ acquiredPriceCents: v }),
+        };
+      if (cellId.startsWith('field:')) {
+        const key = cellId.slice('field:'.length);
+        const def = tableFields.find((f) => f.key === key);
+        if (!def) return null;
+        const kind = INLINE_EDITABLE_TYPES[def.type];
+        if (!kind) return null;
+        return {
+          cellId,
+          kind,
+          value: item.cardFields[key] ?? null,
+          options: def.type === 'select' ? def.options : undefined,
+          toPatch: (v) => ({ fields: { [key]: v } }),
+        };
+      }
+      return null;
+    },
+    [tableFields],
+  );
+
+  const closeEditor = useCallback(() => setOpenCell(null), []);
+
+  const commitOpen = useCallback(
+    async (itemId: number, patch: Record<string, unknown>) => {
+      await onCommitCell(itemId, patch);
+      setOpenCell(null);
+    },
+    [onCommitCell],
+  );
+
+  // Tab traversal: commit (fire-and-forget) then open the next editable cell.
+  const advance = useCallback(
+    (item: ItemSummary, fromCellId: string, patch: Record<string, unknown> | null, dirStep: 1 | -1) => {
+      if (patch) void onCommitCell(item.id, patch);
+      const idx = rowCellOrder.indexOf(fromCellId);
+      let nextIdx = idx;
+      // Find the next cell id that yields a valid editable cell for this row.
+      for (let step = 0; step < rowCellOrder.length; step++) {
+        nextIdx += dirStep;
+        if (nextIdx < 0 || nextIdx >= rowCellOrder.length) {
+          setOpenCell(null);
+          return;
+        }
+        const candidate = rowCellOrder[nextIdx];
+        if (buildCell(item, candidate)) {
+          setOpenCell({ itemId: item.id, cellId: candidate });
+          return;
+        }
+      }
+      setOpenCell(null);
+    },
+    [rowCellOrder, buildCell, onCommitCell],
+  );
+
+  // Render an editable <td> that becomes an editor on double-click. This is a
+  // plain render helper (not a component) so React keeps stable <td> identity and
+  // the open editor doesn't remount on parent re-renders.
+  const renderEditableTd = (
+    item: ItemSummary,
+    cellId: string,
+    children: React.ReactNode,
+    className?: string,
+  ) => {
+    const isOpen = openCell?.itemId === item.id && openCell.cellId === cellId;
+    const cell = isOpen ? buildCell(item, cellId) : null;
+    return (
+      <td
+        key={cellId}
+        className={`editable-cell ${className ?? ''} ${isOpen ? 'editing' : ''}`}
+        onDoubleClick={(e) => {
+          if (selectMode) return;
+          e.stopPropagation();
+          cancelPendingNav(); // beat the deferred single-click nav
+          if (buildCell(item, cellId)) setOpenCell({ itemId: item.id, cellId });
+        }}
+        // While editing, swallow row-nav clicks for this cell.
+        onClick={isOpen ? (e) => e.stopPropagation() : undefined}
+      >
+        {isOpen && cell ? (
+          <InlineCellEditor
+            cell={cell}
+            onCommit={(patch) => commitOpen(item.id, patch)}
+            onCancel={closeEditor}
+            onCommitAndAdvance={(patch, step) => advance(item, cellId, patch, step)}
+          />
+        ) : (
+          children
+        )}
+      </td>
+    );
+  };
+
   return (
     <div className="table-wrap">
-      <table className="data">
+      <table className="data editable">
         <thead>
           <tr>
             {selectMode && <th style={{ width: 36 }} aria-label="Select" />}
@@ -713,15 +974,30 @@ function TableView({
             <th className="sortable num" onClick={sortHandler('quantity')}>
               Qty{sortIndicator('quantity')}
             </th>
+            <th className="col-actions" aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
           {items.map((item) => {
             const isSel = selected.has(item.id);
+            const rowEditing = openCell?.itemId === item.id;
             return (
               <tr
                 key={item.id}
-                onClick={() => (selectMode ? onToggleSelected(item.id) : onOpen(item.id))}
+                onClick={() => {
+                  // Suppress row nav while any cell in this row is being edited.
+                  if (rowEditing) return;
+                  if (selectMode) {
+                    onToggleSelected(item.id);
+                    return;
+                  }
+                  // Defer nav so a double-click (to edit) can cancel it first.
+                  cancelPendingNav();
+                  navTimer.current = setTimeout(() => {
+                    navTimer.current = null;
+                    onOpen(item.id);
+                  }, 220);
+                }}
                 style={{ cursor: 'pointer' }}
                 className={isSel ? 'selected' : ''}
               >
@@ -740,15 +1016,38 @@ function TableView({
                     </label>
                   </td>
                 )}
-                <td>{item.name}</td>
-                {tableFields.map((f) => (
-                  <td key={f.key}>{fmtCell(f, item.cardFields[f.key])}</td>
-                ))}
-                <td>
-                  <StatusBadge status={item.status} />
+                {renderEditableTd(item, 'name', item.name)}
+                {tableFields.map((f) => {
+                  const cellId = `field:${f.key}`;
+                  const kind = INLINE_EDITABLE_TYPES[f.type];
+                  if (!kind) {
+                    // Not inline-editable (multiselect / ammo_ref) — display only.
+                    return <td key={f.key}>{fmtCell(f, item.cardFields[f.key])}</td>;
+                  }
+                  return renderEditableTd(item, cellId, fmtCell(f, item.cardFields[f.key]));
+                })}
+                {renderEditableTd(item, 'status', <StatusBadge status={item.status} />)}
+                {renderEditableTd(
+                  item,
+                  'currentValueCents',
+                  formatMoney(item.currentValueCents),
+                  'cell-money num',
+                )}
+                {renderEditableTd(item, 'quantity', formatQuantity(item.quantity), 'num')}
+                <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="btn-icon btn-ghost row-edit"
+                    aria-label={`Edit ${item.name}`}
+                    title="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(item.id);
+                    }}
+                  >
+                    <Icon name="edit" size={15} />
+                  </button>
                 </td>
-                <td className="cell-money num">{formatMoney(item.currentValueCents)}</td>
-                <td className="num">{formatQuantity(item.quantity)}</td>
               </tr>
             );
           })}

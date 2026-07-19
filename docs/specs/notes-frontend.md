@@ -134,6 +134,67 @@ client/
 - Icons in `client/public` (favicon.png, icon-192/512, apple-touch-icon.png) are referenced but owned
   by the shell/asset agent — not generated here.
 
+## 2026-07-19 follow-up: inline table editing + edit pane
+
+Two Browse-page editing features, all inside `client/` (no server changes; relies on
+`PATCH /api/items/:id` partial core + `{fields:{key:value}}` merge already supported).
+
+### Feature 1 — spreadsheet-style inline editing (table view)
+- **New `components/InlineCellEditor.tsx`** — control per cell type (text/textarea→
+  single-line text, number, currency $→cents, date, year, select, checkbox, url, rating).
+  Enter/blur commits, Esc reverts, Tab commits + advances to the next editable cell in the
+  row (Shift+Tab = previous). A `settled` ref guards the blur-after-commit double-fire.
+  Per-cell pending spinner via `.cell-editor[data-pending]`. `parseValue` normalizes
+  checkbox→boolean, rating/number/year→number, currency→cents. Editors are 16px
+  (13px ≥900px) with a brass focus ring.
+- **`pages/BrowsePage.tsx` `TableView`** — name, status (select of the six statuses),
+  quantity, value, and every `showInTable` dynamic field of an editable type become a
+  double-click editor. **multiselect** and **ammo_ref** are display-only inline (use the
+  pane). Tags/thumbnail columns unchanged.
+- **Single vs double click:** a 220ms deferred-nav timer on the row `onClick` lets a
+  double-click cancel navigation and open the editor; row nav is suppressed while any cell
+  in that row is editing; select-mode and the actions/checkbox columns `stopPropagation`.
+  `renderEditableTd` is a plain render helper (not a nested component) so the open editor
+  keeps stable `<td>` identity and never remounts.
+- **Commit:** `commitCell` PATCHes via `api.patch` (row id is dynamic, so not the per-id
+  `useUpdateItem` hook — mirrors `BatchBar`), core keys top-level and dynamic under `fields`.
+  Success invalidates `['items']`, `['item',id]`, `['stats']`, `['collections']`; error
+  toasts + re-invalidates `['items']` to revert to server truth.
+- **Affordance:** editable cells show a brass-ghost hover tint + inset ring behind
+  `@media (any-hover:hover)`; on touch the row/card pencils stay visible.
+
+### Feature 2 — slide-over edit pane (grid + table)
+- **Extracted `components/ItemForm.tsx`** — the form body of ItemFormPage moved into a
+  reusable component: `{collection, item, variant:'page'|'pane', onSaved, onCancel,
+  registerRequestClose?}`. Core section + dynamic sections (NFA-style collapse) +
+  PhotoUploader (create-mode deferred queue preserved; edit-mode immediate upload) + tag
+  picker + unsaved-changes ConfirmDialog. `registerRequestClose` routes a host's scrim/Esc
+  close through the same guard as Cancel.
+- **`pages/ItemFormPage.tsx`** is now a thin route wrapper (loaders + back-link + title)
+  rendering `<ItemForm variant="page">`. Zero behavior change for `/new` and `/edit`.
+- **New `components/EditPane.tsx`** — right slide-over drawer (Portal + `.pane-scrim`),
+  600px / full-height, `pane-in` slide ≤220ms, full-screen sheet under 900px, body-scroll
+  locked. Loads item + collection by id → `<ItemForm variant="pane">` (edit-only). Esc /
+  scrim / Cancel close via the form guard. Save → PATCH (shared form's `useUpdateItem`,
+  which already invalidates list + item), close, toast "Saved".
+- **Browse wiring:** pencil on table-row hover (`.row-edit`) and card hover (`.card-edit`,
+  always visible on touch). Opening sets `?edit=<itemId>` (via `patchParams`, same URL-state
+  convention as filters) so back-button + deep links work; closing removes it. The pane is a
+  portal overlay, so the list's filters/sort/scroll behind it are untouched.
+
+### Files touched
+- Added: `client/src/components/ItemForm.tsx`, `EditPane.tsx`, `InlineCellEditor.tsx`.
+- Modified: `client/src/pages/BrowsePage.tsx`, `client/src/pages/ItemFormPage.tsx`,
+  `client/src/styles/features.css`.
+
+### Interaction decisions
+- Single click = row nav (deferred 220ms), double click = edit — standard spreadsheet
+  resolution; the delay applies only to table-view row navigation.
+- multiselect / ammo_ref fall back to the pane (don't fit a single-cell surface).
+- Edit pane is edit-only; creation stays on `/new` so the deferred-photo flow is untouched.
+- Revert-on-error via `['items']` re-invalidation (react-query refetch) rather than
+  optimistic rollback — consistent with §8.
+
 ## Verify
 
 ```
