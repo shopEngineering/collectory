@@ -280,6 +280,39 @@ export interface RelatedResponse {
   referencedBy: RelatedGroup[];
 }
 
+// Magazine: child record of a firearm item (v1.1 revised — not a collection).
+// A magazine can hold certain ammunition (holdsAmmoIds) and may be loaded with
+// one; loading never changes the ammo lot quantity (only firing deducts).
+export interface Magazine {
+  id: number;
+  itemId: number;
+  name: string;
+  manufacturer: string;
+  capacity: number | null;
+  caliber: string;
+  quantity: number;
+  holdsAmmoIds: number[];
+  loaded: boolean;
+  loadedWithId: number | null;
+  loadedRounds: number | null;
+  notes: string;
+  sortOrder: number;
+}
+
+export interface MagazineInput {
+  name?: string;
+  manufacturer?: string;
+  capacity?: number | null;
+  caliber?: string;
+  quantity?: number;
+  holdsAmmoIds?: number[];
+  loaded?: boolean;
+  loadedWithId?: number | null;
+  loadedRounds?: number | null;
+  notes?: string;
+  sortOrder?: number;
+}
+
 export interface SearchResult {
   item: ItemSummary;
   collectionName: string;

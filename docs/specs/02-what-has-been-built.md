@@ -1,4 +1,19 @@
-# 02 — What Has Been Built (v1.0.0, 2026-07-19)
+# 02 — What Has Been Built (v1.0.0 + same-day v1.1 features, 2026-07-19)
+
+## Post-v1.0 same-day additions (all verified, in the v1.0.0 tag)
+- **Spreadsheet-style inline editing** in table view (double-click; Enter/blur/Tab/Esc; all simple
+  field types + core columns) and a **slide-over edit pane** (`?edit=<id>`, full dynamic form).
+- **UX round:** prominent Edit button on item detail; photo adds everywhere (inline on new logs
+  with iPad camera capture, per-log camera button, always-visible gallery add tile); clickable-row
+  affordances in table view (hover tint, link-styled name, chevron).
+- **Magazines & item references (DESIGN §5.2):** `item_ref`/`item_refs` field types with
+  refTemplate, `/api/item-choices`, `/api/items/:id/related` (both directions + used_with),
+  Magazines built-in template (loaded state deliberately does NOT deduct ammo lots — firing does),
+  firearms `associated_ammo` pinned first in the range-log picker, Related card on item detail.
+  38 backend tests green.
+- **CI lessons encoded in release.yml:** Node 22 (better-sqlite3 v12 has no Node 20 prebuilds) +
+  setuptools; single macos-14 runner cross-building arm64+x64 (macos-13 Intel runners are retired
+  and queue forever).
 
 Built in a single orchestrated multi-agent session (3 research + 3 implementation agents + fable
 orchestrator). Everything below is implemented and verified.

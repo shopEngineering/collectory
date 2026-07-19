@@ -10,21 +10,13 @@ async function firearmsCollection(app, name = 'Guns') {
 async function ammoCollection(app, name = 'Ammo') {
   return (await request(app).post('/api/collections').send({ name, templateKey: 'ammunition' })).body;
 }
-async function magazinesCollection(app, name = 'Mags') {
-  return (await request(app).post('/api/collections').send({ name, templateKey: 'magazines' })).body;
-}
 
-test('templates: magazines template exposes item_refs fits_firearms; firearms exposes associated_ammo', async (t) => {
+test('templates: firearms exposes associated_ammo (item_refs -> ammunition); refTemplate persists; no magazines collection template', async (t) => {
   const { app, dataDir, ctx } = freshApp();
   cleanup(t, dataDir, ctx);
 
   const templates = (await request(app).get('/api/templates')).body;
-  const mags = templates.find((tpl) => tpl.key === 'magazines');
-  assert.ok(mags, 'magazines template present');
-  const fitsField = mags.fields.find((f) => f.key === 'fits_firearms');
-  assert.ok(fitsField, 'fits_firearms field present');
-  assert.strictEqual(fitsField.type, 'item_refs');
-  assert.strictEqual(fitsField.refTemplate, 'firearms');
+  assert.ok(!templates.some((tpl) => tpl.key === 'magazines'), 'magazines is NOT a collection template (child records of firearms instead)');
 
   const firearms = templates.find((tpl) => tpl.key === 'firearms');
   assert.ok(firearms, 'firearms template present');
@@ -34,11 +26,11 @@ test('templates: magazines template exposes item_refs fits_firearms; firearms ex
   assert.strictEqual(ammoField.refTemplate, 'ammunition');
 
   // ref_template DB column round-trips through GET /api/collections/:id
-  const col = await magazinesCollection(app);
+  const col = await firearmsCollection(app);
   const full = (await request(app).get(`/api/collections/${col.id}`)).body;
-  const persistedField = full.fields.find((f) => f.key === 'fits_firearms');
-  assert.ok(persistedField, 'fits_firearms field persisted on collection');
-  assert.strictEqual(persistedField.refTemplate, 'firearms', 'refTemplate persisted through ref_template column');
+  const persisted = full.fields.find((f) => f.key === 'associated_ammo');
+  assert.ok(persisted, 'associated_ammo persisted on collection');
+  assert.strictEqual(persisted.refTemplate, 'ammunition', 'refTemplate persisted through ref_template column');
 });
 
 test('item-choices: filters by template and q, shapes each choice, excludes former/deleted', async (t) => {
@@ -96,33 +88,27 @@ test('items/:id/related: outgoing references, referencedBy, and used_with', asyn
   cleanup(t, dataDir, ctx);
   const guns = await firearmsCollection(app);
   const ammo = await ammoCollection(app);
-  const mags = await magazinesCollection(app);
 
   const gun = (await request(app).post('/api/items').send({ collectionId: guns.id, name: 'AR-15' })).body;
   const ammoItem = (await request(app).post('/api/items').send({ collectionId: ammo.id, name: '5.56 M193', fields: { caliber: '5.56 NATO' } })).body;
-  const mag = (await request(app).post('/api/items').send({ collectionId: mags.id, name: 'PMAG 30', fields: { fits_firearms: [gun.id] } })).body;
 
-  // gun's referencedBy includes the magazine via fits_firearms
-  const gunRelated1 = (await request(app).get(`/api/items/${gun.id}/related`)).body;
-  assert.deepStrictEqual(Object.keys(gunRelated1).sort(), ['referencedBy', 'references'].sort());
-  const fitsGroup = gunRelated1.referencedBy.find((g) => g.fieldKey === 'fits_firearms');
-  assert.ok(fitsGroup, 'referencedBy has fits_firearms group');
-  assert.strictEqual(fitsGroup.fieldLabel, 'Fits Firearms');
-  assert.strictEqual(fitsGroup.templateKey, 'magazines');
-  assert.ok(fitsGroup.items.some((it) => it.id === mag.id), 'magazine listed as referencing the gun');
-
-  // patch the gun with associated_ammo -> gun's own references includes ammo
+  // patch the gun with associated_ammo -> both directions
   await request(app).patch(`/api/items/${gun.id}`).send({ fields: { associated_ammo: [ammoItem.id] } });
-  const gunRelated2 = (await request(app).get(`/api/items/${gun.id}/related`)).body;
-  const ammoGroup = gunRelated2.references.find((g) => g.fieldKey === 'associated_ammo');
+
+  // outgoing: gun's references includes the ammo under associated_ammo
+  const gunRelated = (await request(app).get(`/api/items/${gun.id}/related`)).body;
+  assert.deepStrictEqual(Object.keys(gunRelated).sort(), ['referencedBy', 'references'].sort());
+  const ammoGroup = gunRelated.references.find((g) => g.fieldKey === 'associated_ammo');
   assert.ok(ammoGroup, 'references has associated_ammo group');
   assert.ok(ammoGroup.items.some((it) => it.id === ammoItem.id), 'ammo item listed under associated_ammo');
 
-  // the magazine's own references includes fits_firearms -> the gun
-  const magRelated = (await request(app).get(`/api/items/${mag.id}/related`)).body;
-  const magFits = magRelated.references.find((g) => g.fieldKey === 'fits_firearms');
-  assert.ok(magFits, 'magazine references fits_firearms');
-  assert.ok(magFits.items.some((it) => it.id === gun.id), 'gun listed under magazine fits_firearms');
+  // incoming: the ammo's referencedBy includes the gun via associated_ammo
+  const ammoRelated1 = (await request(app).get(`/api/items/${ammoItem.id}/related`)).body;
+  const byGroup = ammoRelated1.referencedBy.find((g) => g.fieldKey === 'associated_ammo');
+  assert.ok(byGroup, 'ammo referencedBy has associated_ammo group');
+  assert.strictEqual(byGroup.templateKey, 'firearms');
+  assert.strictEqual(byGroup.fieldLabel, 'Ammunition for this firearm');
+  assert.ok(byGroup.items.some((it) => it.id === gun.id), 'gun listed as referencing the ammo');
 
   // used_with: a range_session log on the gun referencing the ammo item
   const log = await request(app)
@@ -130,8 +116,8 @@ test('items/:id/related: outgoing references, referencedBy, and used_with', asyn
     .send({ logTypeKey: 'range_session', date: '2026-01-01', data: { rounds_fired: 20, ammo_item_id: ammoItem.id } });
   assert.strictEqual(log.status, 201);
 
-  const ammoRelated = (await request(app).get(`/api/items/${ammoItem.id}/related`)).body;
-  const usedWith = ammoRelated.referencedBy.find((g) => g.fieldKey === 'used_with');
+  const ammoRelated2 = (await request(app).get(`/api/items/${ammoItem.id}/related`)).body;
+  const usedWith = ammoRelated2.referencedBy.find((g) => g.fieldKey === 'used_with');
   assert.ok(usedWith, 'ammo item has synthetic used_with group');
   assert.ok(usedWith.items.some((it) => it.id === gun.id), 'gun listed under used_with');
 });

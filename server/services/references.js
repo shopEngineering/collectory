@@ -139,6 +139,30 @@ function related(db, itemId) {
     });
   }
 
+  // ---- synthetic magazines group: firearms with a magazine that holds or is
+  // loaded with this (ammo) item (magazines are child records of firearms) ----
+  const magRows = db
+    .prepare(
+      `SELECT DISTINCT i.id, i.name, i.collection_id, i.quantity, i.fields_json, i.cover_photo_id
+       FROM magazines mg JOIN items i ON i.id = mg.item_id
+       WHERE i.deleted_at IS NULL
+         AND i.status NOT IN (${FORMER_STATUSES.map(() => '?').join(',')})
+         AND (
+           mg.loaded_with = ?
+           OR EXISTS (SELECT 1 FROM json_each(mg.holds_ammo_json) WHERE CAST(json_each.value AS INTEGER) = ?)
+         )
+       ORDER BY i.name`
+    )
+    .all(...FORMER_STATUSES, itemId, itemId);
+  if (magRows.length) {
+    referencedBy.push({
+      fieldKey: 'magazines',
+      fieldLabel: 'In magazines of',
+      templateKey: 'firearms',
+      items: magRows.map((row) => choiceFor(db, row)),
+    });
+  }
+
   // ---- synthetic used_with: guns whose range logs used this (ammo) item ----
   const usedWithRows = db
     .prepare(

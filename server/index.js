@@ -16,6 +16,7 @@ const { HttpError } = require('./util/errors');
 const collectionsRouter = require('./routes/collections');
 const itemsRouter = require('./routes/items');
 const logsRouter = require('./routes/logs');
+const magazinesRouter = require('./routes/magazines');
 const photosRouter = require('./routes/photos');
 const miscRouter = require('./routes/misc');
 const exchangeRouter = require('./routes/exchange');
@@ -117,6 +118,7 @@ function createApp(dataDir) {
   api.use(collectionsRouter(ctx));
   api.use(itemsRouter(ctx));
   api.use(logsRouter(ctx));
+  api.use(magazinesRouter(ctx));
   api.use(photosRouter(ctx));
   api.use(exchangeRouter(ctx));
   api.use(systemRouter(ctx));

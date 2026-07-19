@@ -5,6 +5,8 @@ import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Field } from '../components/FieldInput';
+import { AmmoPicker } from '../components/AmmoPicker';
+import { ItemRefsPicker } from '../components/ItemRefPicker';
 import { Lightbox } from '../components/Lightbox';
 import { CollectionDot, StatusBadge } from '../components/bits';
 import { ConfirmDialog, LoadingBlock, ErrorBlock, Menu, Spinner } from '../components/ui';
@@ -16,19 +18,23 @@ import {
   useAttachments,
   useCollection,
   useCreateLog,
+  useCreateMagazine,
   useCreateProvenance,
   useCreateValuation,
   useDeleteAttachment,
   useDeleteItem,
   useDeleteLog,
+  useDeleteMagazine,
   useDeleteProvenance,
   useDeleteValuation,
   useDuplicateItem,
   useItem,
   useLogs,
+  useMagazines,
   useProvenance,
   useRelated,
   useUpdateLog,
+  useUpdateMagazine,
   useUpdateProvenance,
   useValuations,
 } from '../api/hooks';
@@ -43,6 +49,7 @@ import type {
   ItemChoice,
   LogEntry,
   LogTypeDef,
+  Magazine,
   Photo,
   Provenance,
   RelatedGroup,
@@ -314,17 +321,23 @@ function GalleryAddTile({ itemId }: { itemId: number }) {
 }
 
 // ---- Tabs ------------------------------------------------------------------
-type TabKey = 'activity' | 'provenance' | 'value' | 'files';
+type TabKey = 'activity' | 'magazines' | 'provenance' | 'value' | 'files';
 
 function TabbedPanels({ item, collection }: { item: Item; collection: CollectionFull }) {
   const [tab, setTab] = useState<TabKey>('activity');
+  // Magazines are child records of firearms only (v1.1 revised design).
+  const isFirearm = collection.templateKey === 'firearms';
   const { data: logs } = useLogs(item.id);
+  const { data: magazines } = useMagazines(item.id, isFirearm);
   const { data: provenance } = useProvenance(item.id);
   const { data: valuations } = useValuations(item.id);
   const { data: attachments } = useAttachments(item.id);
 
   const tabs: Array<{ key: TabKey; label: string; count: number }> = [
     { key: 'activity', label: 'Activity', count: logs?.length ?? 0 },
+    ...(isFirearm
+      ? [{ key: 'magazines' as TabKey, label: 'Magazines', count: magazines?.length ?? 0 }]
+      : []),
     { key: 'provenance', label: 'Provenance', count: provenance?.length ?? 0 },
     { key: 'value', label: 'Value', count: valuations?.length ?? 0 },
     { key: 'files', label: 'Files', count: attachments?.length ?? 0 },

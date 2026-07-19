@@ -19,6 +19,8 @@ import type {
   ItemQuery,
   LogEntry,
   LogTypeDef,
+  Magazine,
+  MagazineInput,
   Provenance,
   RelatedResponse,
   SearchResponse,
@@ -35,6 +37,7 @@ export const qk = {
   items: (collectionId: number, query: ItemQuery) => ['items', collectionId, query] as const,
   item: (id: number) => ['item', id] as const,
   logs: (itemId: number) => ['logs', itemId] as const,
+  magazines: (itemId: number) => ['magazines', itemId] as const,
   provenance: (itemId: number) => ['provenance', itemId] as const,
   valuations: (itemId: number) => ['valuations', itemId] as const,
   attachments: (itemId: number) => ['attachments', itemId] as const,
@@ -281,6 +284,45 @@ export function useDeleteLog(itemId: number) {
   return useMutation({
     mutationFn: (id: number) => api.del<void>(`/logs/${id}`),
     onSuccess: () => invalidateItemDerived(qc, itemId),
+  });
+}
+
+// ---- Magazines (child records of a firearm item) --------------------------
+function invalidateMagazines(qc: ReturnType<typeof useQueryClient>, itemId: number) {
+  qc.invalidateQueries({ queryKey: qk.magazines(itemId) });
+  qc.invalidateQueries({ queryKey: ['related'] }); // ammo "In magazines of" groups
+}
+
+export function useMagazines(itemId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: itemId ? qk.magazines(itemId) : ['magazines', 'none'],
+    queryFn: () => api.get<{ magazines: Magazine[] }>(`/items/${itemId}/magazines`).then((r) => r.magazines),
+    enabled: enabled && itemId != null && !Number.isNaN(itemId),
+  });
+}
+
+export function useCreateMagazine(itemId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: MagazineInput) => api.post<Magazine>(`/items/${itemId}/magazines`, body),
+    onSuccess: () => invalidateMagazines(qc, itemId),
+  });
+}
+
+export function useUpdateMagazine(itemId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: MagazineInput }) =>
+      api.patch<Magazine>(`/magazines/${id}`, body),
+    onSuccess: () => invalidateMagazines(qc, itemId),
+  });
+}
+
+export function useDeleteMagazine(itemId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.del<void>(`/magazines/${id}`),
+    onSuccess: () => invalidateMagazines(qc, itemId),
   });
 }
 

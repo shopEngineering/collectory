@@ -35,6 +35,10 @@ no service worker, ad-hoc signing). Post-build decisions: sub-resource list enve
   EAV schema (join sprawl) — rationale in DESIGN §10.
 
 ## TODOs (user-facing)
-- [ ] Create GitHub repo, push, tag `v1.0.0`, publish draft release (workflow does the DMGs).
+- [x] GitHub repo (shopEngineering/collectory), pushed, tagged v1.0.0 — CI builds arm64+x64 DMGs
+      into a draft release; publish the draft when satisfied.
 - [ ] Import uncle's real myArmsCache/spreadsheet data via /import.
+- [ ] Real-iPad LAN/PWA acceptance test.
 - [ ] Decide on notarization ($99/yr) if distribution widens.
+- Note: two subagents this session reported phantom "instructions" that were never sent (ignored
+  both times, nothing acted on) — keep an eye on subagent-transcript integrity.

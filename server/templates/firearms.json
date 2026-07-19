@@ -35,7 +35,7 @@
     { "key": "owner_entity", "label": "Registered To", "type": "select", "section": "NFA / Compliance", "options": ["Individual", "Trust", "LLC"] },
     { "key": "trust_name", "label": "Trust / Entity Name", "type": "text", "section": "NFA / Compliance" },
     { "key": "storage_location", "label": "Storage Location", "type": "text", "section": "Storage", "placeholder": "Safe 1, shelf 2…" },
-    { "key": "associated_ammo", "label": "Ammunition for this firearm", "type": "item_refs", "refTemplate": "ammunition", "section": "Ammunition & Magazines", "help": "Ammo you use in this firearm — pinned first in the range-log ammo picker" }
+    { "key": "associated_ammo", "label": "Ammunition for this firearm", "type": "item_refs", "refTemplate": "ammunition", "section": "Ammunition", "help": "Ammo you use in this firearm — pinned first in the range-log ammo picker" }
   ],
   "logTypes": [
     { "key": "range_session", "label": "Range Session", "icon": "target", "color": "#8a6d3b", "fields": [

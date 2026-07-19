@@ -196,6 +196,25 @@ function tagToApi(row) {
   return { id: row.id, name: row.name, color: row.color };
 }
 
+// ---- Magazine (child record of a firearm item, v1.1 revised) ----
+function magazineToApi(row) {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    name: row.name,
+    manufacturer: row.manufacturer,
+    capacity: row.capacity,
+    caliber: row.caliber,
+    quantity: row.quantity,
+    holdsAmmoIds: parseJson(row.holds_ammo_json, []),
+    loaded: bool(row.loaded),
+    loadedWithId: row.loaded_with,
+    loadedRounds: row.loaded_rounds,
+    notes: row.notes,
+    sortOrder: row.sort_order,
+  };
+}
+
 module.exports = {
   bool,
   parseJson,
@@ -212,4 +231,5 @@ module.exports = {
   provenanceToApi,
   valuationToApi,
   tagToApi,
+  magazineToApi,
 };
