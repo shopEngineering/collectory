@@ -9,30 +9,19 @@ Data in `~/Library/Application Support/Collectory/`. Download page: shopengineer
 `npm run rebuild:node` if `ERR_DLOPEN_FAILED`). Build DMG: `npm run dist`.
 
 ## State (what works now)
-- v1.0.7 code is DONE, committed, and pushed to main. It bundles 1.0.4–1.0.6 (CSV import fixes +
-  auto-field-mapping; sortable table columns incl. custom fields; clickable-row cursor) PLUS the full
-  four-part security/architecture review remediation: 4 critical + 10 high findings fixed with tests.
-  57 backend tests pass; client build clean; `npm audit` clean.
-- Currently PUBLISHED release is **v1.0.5** (latest). v1.0.7 is built + notarizing (see below), NOT
-  yet published. (1.0.6 was folded into 1.0.7 and never published.)
-- Docs (README, DESIGN §11, 00/02/03, memory) already refreshed. Session prompts logged.
-
-## IN-FLIGHT — DO FIRST: publish v1.0.7
-Both DMGs in `release/` (`Collectory-arm64.dmg`, `Collectory-x64.dmg`) are already **Developer-ID
-signed**. Apple notarization:
-- x64  id `22bb3d17-86ae-4956-9ab0-b18fbd3abd8a` → **Accepted**
-- arm64 id `e8eb9fb2-4db8-4cc7-bc3b-9f11db3a1d0f` → **In Progress** (was still processing at handoff)
-
-A background monitor (task `bvo66r53e`) is watching both. When arm64 also shows Accepted:
-1. `cd release && xcrun stapler staple Collectory-arm64.dmg && xcrun stapler staple Collectory-x64.dmg`
-   (verify each: `xcrun stapler validate <dmg>` = worked; `spctl -a -t open --context context:primary-signature <dmg>` = accepted / Notarized Developer ID).
-2. `gh release create v1.0.7 --repo shopEngineering/collectory --target main --latest --title "The Collectory 1.0.7" --notes "<security+data-integrity hardening; see 02-what-has-been-built>" Collectory-arm64.dmg Collectory-x64.dmg`
-3. `gh release delete v1.0.5 --repo shopEngineering/collectory --yes && git push origin :refs/tags/v1.0.5`
-4. Verify: download `.../releases/latest/download/Collectory-arm64.dmg`, `xattr -w com.apple.quarantine "0083;..;Safari;"`, `spctl -a -t open --context context:primary-signature` = accepted.
-- Notary keychain profile: **`collectory-notary`** (Apple ID lukedub@gmail.com, team 4VB36N29U5). It
-  has vanished from the keychain once mid-session — if `notarytool` says "No Keychain password item
-  found", have Luke re-run `xcrun notarytool store-credentials "collectory-notary" --apple-id
-  "lukedub@gmail.com" --team-id "4VB36N29U5"` (paste app-specific password).
+- **v1.0.7 is PUBLISHED and is the latest release** (2026-07-21), signed + notarized, verified via
+  fresh-download + quarantine + `spctl` = Notarized Developer ID. v1.0.5 retired. Download page +
+  in-app Check-for-Updates serve it.
+- v1.0.7 bundles 1.0.4–1.0.6 (CSV import fixes + auto-field-mapping; sortable table columns incl.
+  custom fields; clickable-row cursor) PLUS the full four-part security/architecture review
+  remediation: 4 critical + 10 high findings fixed with tests. 57 backend tests; client build clean;
+  `npm audit` clean.
+- Docs (README, DESIGN §11, 00/02/03, memory) refreshed. Session prompts logged.
+- No in-flight release action — publish is complete. (Notary keychain profile is `collectory-notary`;
+  it vanished from the keychain once mid-session — if `notarytool` says "No Keychain password item
+  found", re-run `xcrun notarytool store-credentials "collectory-notary" --apple-id
+  "lukedub@gmail.com" --team-id "4VB36N29U5"`. Apple's notary queue was very slow this session — an
+  arm64 submission wedged >1h; resubmitting a fresh copy cleared it.)
 
 ## Next steps (after publish)
 1. **Cloud-automation cert export** (biggest win — ends local notarization fragility): Luke exports
