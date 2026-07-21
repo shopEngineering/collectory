@@ -19,6 +19,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Refuse to publish an un-notarized release: without the signing cert,
+      # downloads would show "damaged" on Apple Silicon. Fail fast instead.
+      - name: Require signing secrets
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then
+            echo "::error::Signing secrets not configured — refusing to publish an unsigned build. Add CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID as repo secrets."
+            exit 1
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
