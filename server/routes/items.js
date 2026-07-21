@@ -44,7 +44,7 @@ module.exports = function itemsRouter(ctx) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    const sort = SORT_MAP[req.query.sort] || 'updated_at';
+    const rawSort = String(req.query.sort || '');
     const dir = String(req.query.dir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
@@ -83,11 +83,28 @@ module.exports = function itemsRouter(ctx) {
       params.push(key, v);
     }
 
+    // ORDER BY: a whitelisted core column, status, or any dynamic field via
+    // json_extract (the field key is a bound param — never interpolated).
+    let orderExpr;
+    const orderParams = [];
+    if (rawSort.startsWith('field:')) {
+      const key = rawSort.slice('field:'.length);
+      const fd = db.prepare('SELECT type FROM field_defs WHERE collection_id = ? AND key = ?').get(collectionId, key);
+      const numeric = fd && ['number', 'currency', 'year', 'rating'].includes(fd.type);
+      const extract = "json_extract(i.fields_json, '$.' || ?)";
+      orderExpr = numeric ? `CAST(${extract} AS REAL) ${dir}` : `${extract} COLLATE NOCASE ${dir}`;
+      orderParams.push(key);
+    } else if (rawSort === 'status') {
+      orderExpr = `i.status ${dir}`;
+    } else {
+      orderExpr = `i.${SORT_MAP[rawSort] || 'updated_at'} ${dir}`;
+    }
+
     const whereSql = where.join(' AND ');
     const total = db.prepare(`SELECT COUNT(*) AS c FROM items i WHERE ${whereSql}`).get(...params).c;
     const rows = db
-      .prepare(`SELECT i.* FROM items i WHERE ${whereSql} ORDER BY i.${sort} ${dir}, i.id ${dir} LIMIT ? OFFSET ?`)
-      .all(...params, limit, offset);
+      .prepare(`SELECT i.* FROM items i WHERE ${whereSql} ORDER BY ${orderExpr}, i.id ${dir} LIMIT ? OFFSET ?`)
+      .all(...params, ...orderParams, limit, offset);
     res.json({ items: rows.map((row) => itemSvc.buildSummary(db, row)), total });
   }));
 

@@ -955,19 +955,17 @@ function TableView({
               Name{sortIndicator('name')}
             </th>
             {tableFields.map((f) => {
-              const skey = FIELD_SORT_KEY[f.key];
+              const skey: ItemSort = FIELD_SORT_KEY[f.key] ?? `field:${f.key}`;
               return (
-                <th
-                  key={f.key}
-                  className={skey ? 'sortable' : ''}
-                  onClick={skey ? sortHandler(skey) : undefined}
-                >
+                <th key={f.key} className="sortable" onClick={sortHandler(skey)}>
                   {f.label}
-                  {skey ? sortIndicator(skey) : ''}
+                  {sortIndicator(skey)}
                 </th>
               );
             })}
-            <th>Status</th>
+            <th className="sortable" onClick={sortHandler('status')}>
+              Status{sortIndicator('status')}
+            </th>
             <th className="sortable num" onClick={sortHandler('currentValue')}>
               Value{sortIndicator('currentValue')}
             </th>

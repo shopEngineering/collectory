@@ -191,7 +191,8 @@ export interface Attachment {
   createdAt?: string;
 }
 
-export type ItemSort =
+// Core sort keys, plus 'status' and any dynamic field as `field:<key>`.
+export type CoreSort =
   | 'name'
   | 'acquiredDate'
   | 'acquiredPrice'
@@ -199,6 +200,7 @@ export type ItemSort =
   | 'createdAt'
   | 'updatedAt'
   | 'quantity';
+export type ItemSort = CoreSort | 'status' | `field:${string}`;
 export type SortDir = 'asc' | 'desc';
 
 export interface ItemQuery {

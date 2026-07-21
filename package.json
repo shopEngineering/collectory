@@ -1,7 +1,7 @@
 {
   "name": "collectory",
   "productName": "The Collectory",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Local-first collection manager for firearms, ammunition, knives, coins, stamps, and anything else you collect. No servers, no cloud, no telemetry.",
   "main": "electron/main.js",
   "license": "MIT",
