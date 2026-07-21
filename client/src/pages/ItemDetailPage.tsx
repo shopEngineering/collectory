@@ -226,7 +226,7 @@ export function ItemDetailPage() {
                 onClick={() => setLightboxIndex(i)}
                 aria-label={photo.caption || `Photo ${i + 1}`}
               >
-                <img src={photo.thumbUrl} alt={photo.caption || `Photo ${i + 1}`} />
+                <img src={photo.thumbUrl} alt={photo.caption || `Photo ${i + 1}`} loading="lazy" decoding="async" />
                 {item.coverPhotoId === photo.id && <span className="cover-badge">Cover</span>}
               </button>
             ))}
@@ -813,6 +813,8 @@ function LogEntryRow({
                     key={photo.id}
                     src={photo.thumbUrl}
                     alt={photo.caption || 'Log photo'}
+                    loading="lazy"
+                    decoding="async"
                     onClick={() => onOpenPhotos(log.photos, i)}
                   />
                 ))}
@@ -1590,7 +1592,7 @@ function RefChipLink({ choice }: { choice: ItemChoice }) {
   return (
     <Link to={`/items/${choice.id}`} className="ref-chip ref-chip-link">
       {choice.thumbUrl ? (
-        <img className="ref-chip-thumb" src={choice.thumbUrl} alt="" />
+        <img className="ref-chip-thumb" src={choice.thumbUrl} alt="" loading="lazy" decoding="async" />
       ) : (
         <Icon name="box" size={13} />
       )}

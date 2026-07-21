@@ -110,14 +110,36 @@ module.exports = function systemRouter(ctx) {
     }
 
     const d = imageStore.ensureDirs(ctx.dataDir);
-    // 1. Safety zip of current data BEFORE any destructive change.
+    // 1. Safety zip of current data BEFORE any destructive change (the archive was
+    //    already validated above, so we don't start destroying until we're sure it's good).
     const safetyPath = path.join(d.backups, `pre-restore-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}.zip`);
     await backupSvc.createBackupZip(ctx.db, ctx.dataDir, ctx.version, safetyPath);
 
-    // 2. Close live connection, replace files, reopen + re-run migrations.
+    // 2. Close live connection, replace files, reopen + re-run migrations. If ANY
+    //    step fails mid-swap, auto-restore from the safety zip so live data survives.
     ctx.closeDb();
-    backupSvc.applyRestore(check.zip, ctx.dataDir);
-    ctx.reopenDb();
+    try {
+      backupSvc.applyRestore(check.zip, ctx.dataDir);
+      ctx.reopenDb();
+    } catch (e) {
+      // Roll back: re-apply the pre-restore safety zip, then reopen.
+      try {
+        const safety = backupSvc.validateRestoreZip(safetyPath);
+        if (safety.ok) backupSvc.applyRestore(safety.zip, ctx.dataDir);
+      } catch {
+        /* best effort — reopen below regardless so the process keeps serving */
+      }
+      try {
+        ctx.reopenDb();
+      } catch {
+        /* leave closed; a subsequent request/restart recovers */
+      }
+      imageStore.safeUnlink(zipPath);
+      throw err.badRequest(
+        `restore failed and live data was rolled back from the safety backup: ${e.message}`,
+        'RESTORE_FAILED'
+      );
+    }
 
     imageStore.safeUnlink(zipPath);
     res.json({ ok: true, safetyBackup: path.basename(safetyPath) });

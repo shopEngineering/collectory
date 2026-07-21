@@ -11,7 +11,7 @@ const settingsSvc = require('./services/settings');
 const imageStore = require('./services/imageStore');
 const backupSvc = require('./services/backup');
 const { makeLanGate } = require('./middleware/lanGate');
-const { HttpError } = require('./util/errors');
+const { HttpError, fromSqlite } = require('./util/errors');
 
 const collectionsRouter = require('./routes/collections');
 const itemsRouter = require('./routes/items');
@@ -86,8 +86,37 @@ function createApp(dataDir) {
   );
 
   const app = express();
-  app.set('trust proxy', true);
+  // Do NOT trust proxy headers: there is no real proxy in front (binds 0.0.0.0
+  // directly), so trusting X-Forwarded-For would let a LAN client forge a loopback
+  // address and bypass the gate + PIN entirely. The gate reads the real socket peer.
+  app.set('trust proxy', false);
   app.locals.ctx = ctx;
+
+  // Security headers (defense-in-depth). The app has an inline pre-paint theme
+  // script + inline style attributes, so scripts/styles allow 'unsafe-inline';
+  // the value here is blocking ALL external resources and — crucially for a
+  // local-first, no-telemetry app — exfiltration (connect-src 'self'), framing,
+  // and object/embed. Applied to every response.
+  const CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "media-src 'self' blob:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+  app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', CSP);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    next();
+  });
 
   app.use(express.json({ limit: '5mb' }));
   app.use(cookieParser(settingsSvc.cookieSecret(ctx.db)));
@@ -95,22 +124,37 @@ function createApp(dataDir) {
   // LAN gate (loopback always allowed; static assets always served)
   app.use(makeLanGate(ctx));
 
-  // Static media (gated for non-loopback by the middleware above)
-  app.use('/images/orig', express.static(path.join(dataDir, 'images', 'orig')));
-  app.use('/images/thumb', express.static(path.join(dataDir, 'images', 'thumb')));
+  // Static media (gated for non-loopback by the middleware above). Always send
+  // X-Content-Type-Options: nosniff so a planted file can't be re-sniffed into an
+  // executable type in the app origin (H6).
+  const noSniff = (res) => res.setHeader('X-Content-Type-Options', 'nosniff');
+  const staticImg = (dir) =>
+    express.static(path.join(dataDir, ...dir), { setHeaders: (res) => noSniff(res) });
+  app.use('/images/orig', staticImg(['images', 'orig']));
+  app.use('/images/thumb', staticImg(['images', 'thumb']));
 
-  // Attachments: set Content-Disposition to the stored original name (§4), then
-  // fall through to static file serving.
+  // Attachments: force download (Content-Disposition: attachment) with nosniff so a
+  // planted HTML/SVG can never execute in the app origin. The stored original name
+  // is used only for the download filename (sanitized against header injection).
   app.get('/attachments/:filename', (req, res, next) => {
     const row = ctx.db.prepare('SELECT original_name, mime FROM attachments WHERE filename = ?').get(req.params.filename);
     if (row) {
       const safe = String(row.original_name || req.params.filename).replace(/[\r\n"]/g, '_');
-      res.setHeader('Content-Disposition', `inline; filename="${safe}"`);
-      if (row.mime) res.type(row.mime);
+      res.setHeader('Content-Disposition', `attachment; filename="${safe}"`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
     }
     next();
   });
-  app.use('/attachments', express.static(path.join(dataDir, 'attachments')));
+  app.use(
+    '/attachments',
+    express.static(path.join(dataDir, 'attachments'), {
+      setHeaders: (res) => {
+        noSniff(res);
+        // Belt-and-suspenders for direct hits that skipped the :filename handler.
+        if (!res.getHeader('Content-Disposition')) res.setHeader('Content-Disposition', 'attachment');
+      },
+    })
+  );
 
   // API routers (all mounted under /api)
   const api = express.Router();
@@ -163,6 +207,11 @@ function createApp(dataDir) {
     }
     if (error && error.type === 'entity.too.large') {
       return res.status(413).json({ error: { message: 'request body too large', code: 'BODY_TOO_LARGE' } });
+    }
+    // SQLite constraint violations -> 4xx instead of an opaque 500.
+    const sqliteMapped = fromSqlite(error);
+    if (sqliteMapped) {
+      return res.status(sqliteMapped.status).json({ error: { message: sqliteMapped.message, code: sqliteMapped.code } });
     }
     // eslint-disable-next-line no-console
     console.error('[error]', error);

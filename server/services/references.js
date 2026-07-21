@@ -20,7 +20,7 @@ function choiceFor(db, row) {
     name: row.name,
     collectionId: row.collection_id,
     collectionName: col ? col.name : '',
-    quantity: row.quantity,
+    quantity: itemSvc.displayQuantity(row.quantity),
     thumbUrl: itemSvc.coverThumbUrl(db, row),
     hint: fields.caliber != null ? String(fields.caliber) : null,
   };

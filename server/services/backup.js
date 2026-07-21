@@ -82,6 +82,9 @@ function validateRestoreZip(zipPath) {
     return { ok: false, message: 'meta.json is not valid JSON' };
   }
   if (meta.app !== 'collectory') return { ok: false, message: 'meta.app is not "collectory"' };
+  if (meta.version == null || String(meta.version).trim() === '') {
+    return { ok: false, message: 'meta.version is missing — not a valid backup file' };
+  }
   return { ok: true, zip, meta };
 }
 

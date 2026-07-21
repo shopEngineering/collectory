@@ -29,7 +29,7 @@ import type {
 import { ITEM_STATUSES } from '../api/types';
 import { STATUS_LABELS, centsToDollars, dollarsToCents } from '../lib/format';
 import { makeThumbnail, isImageFile } from '../lib/image';
-import { useBeforeUnload } from '../lib/hooks';
+import { useBeforeUnload, useNavigationBlocker } from '../lib/hooks';
 
 export type ItemFormVariant = 'page' | 'pane';
 
@@ -147,6 +147,7 @@ export function ItemForm({
   const isPending = createItem.isPending || updateItem.isPending;
 
   useBeforeUnload(dirty);
+  const disarmNavGuard = useNavigationBlocker(dirty);
 
   const markDirty = useCallback(() => setDirty(true), []);
 
@@ -239,12 +240,15 @@ export function ItemForm({
             for (const qp of queued) URL.revokeObjectURL(qp.previewUrl);
             setQueued([]);
             toast.success('Saved — ready for the next one');
+          } else {
+            disarmNavGuard(); // saved cleanly — don't prompt on the ensuing nav
           }
           onSaved(created, opts);
         } else if (item) {
           const updated = await updateItem.mutateAsync(payload);
           setDirty(false);
           if (opts.addAnother) toast.success('Saved');
+          else disarmNavGuard();
           onSaved(updated, opts);
         }
       } catch (e) {
@@ -252,7 +256,7 @@ export function ItemForm({
         toast.error(msg || 'Save failed');
       }
     },
-    [core.name, buildPayload, mode, createItem, updateItem, item, uploadAllQueued, queued, onSaved, toast],
+    [core.name, buildPayload, mode, createItem, updateItem, item, uploadAllQueued, queued, onSaved, toast, disarmNavGuard],
   );
 
   const attemptCancel = useCallback(() => {
@@ -485,6 +489,7 @@ export function ItemForm({
         onConfirm={() => {
           setConfirmCancel(false);
           setDirty(false);
+          disarmNavGuard(); // user already confirmed discard here
           onCancel();
         }}
         onCancel={() => setConfirmCancel(false)}

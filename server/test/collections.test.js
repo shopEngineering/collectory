@@ -75,3 +75,33 @@ test('PUT fields is non-destructive to item field values', async (t) => {
   const after = (await request(app).get(`/api/items/${item.id}`)).body;
   assert.strictEqual(after.fields.steel, 'S30V', 'removed field value retained in item fields_json');
 });
+
+// C2 (server half): force-delete is a PERMANENT delete — it must remove the items'
+// photo + attachment FILES from disk, not leave them orphaned.
+test('C2: collection force-delete unlinks item photo + attachment files from disk', async (t) => {
+  const fs = require('fs');
+  const path = require('path');
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const col = (await request(app).post('/api/collections').send({ name: 'Doomed' })).body;
+  const item = (await request(app).post('/api/items').send({ collectionId: col.id, name: 'HasFiles' })).body;
+
+  // Attach a photo (writes images/orig + images/thumb) and an attachment.
+  const photo = (await request(app).post(`/api/items/${item.id}/photos`).attach('photo', Buffer.from('jpeg-bytes'), 'p.jpg')).body;
+  const att = (await request(app).post(`/api/items/${item.id}/attachments`).attach('file', Buffer.from('pdf-bytes'), 'receipt.pdf')).body;
+
+  const origDir = path.join(dataDir, 'images', 'orig');
+  const thumbDir = path.join(dataDir, 'images', 'thumb');
+  const attDir = path.join(dataDir, 'attachments');
+  assert.strictEqual(fs.readdirSync(origDir).length, 1, 'one original on disk before delete');
+  assert.strictEqual(fs.readdirSync(thumbDir).length, 1, 'one thumb on disk before delete');
+  assert.strictEqual(fs.readdirSync(attDir).length, 1, 'one attachment on disk before delete');
+  void photo; void att;
+
+  const forced = await request(app).delete(`/api/collections/${col.id}?force=true`);
+  assert.strictEqual(forced.status, 200);
+
+  assert.strictEqual(fs.readdirSync(origDir).length, 0, 'original file removed from disk');
+  assert.strictEqual(fs.readdirSync(thumbDir).length, 0, 'thumb file removed from disk');
+  assert.strictEqual(fs.readdirSync(attDir).length, 0, 'attachment file removed from disk');
+});

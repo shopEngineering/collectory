@@ -106,6 +106,74 @@ test('quantity floors at 0 when firing more than available', async (t) => {
   assert.strictEqual(await qty(app, ammo.id), 0, 'quantity floored at 0');
 });
 
+// C1: floor-0 is a DISPLAY clamp; the stored value stays signed so a fire-below-0
+// reverses EXACTLY back to the original (no phantom rounds).
+test('C1: firing more than owned then deleting the log restores the exact original quantity (no phantom rounds)', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const { ammoCol, rifle } = await setup(app);
+  // owned = 100
+  const ammo = (await request(app).post('/api/items').send({ collectionId: ammoCol.id, name: '9mm', quantity: 100 })).body;
+
+  // fire 300 -> displayed quantity floors to 0
+  const log = (await request(app).post(`/api/items/${rifle.id}/logs`).send({ logTypeKey: 'range_session', date: '2026-05-01', data: { rounds_fired: 300, ammo_item_id: ammo.id } })).body;
+  assert.strictEqual(await qty(app, ammo.id), 0, 'displayed on-hand floors to 0 after over-firing');
+
+  // delete the log -> EXACT original 100 restored (bug used to yield 300)
+  await request(app).delete(`/api/logs/${log.id}`);
+  assert.strictEqual(await qty(app, ammo.id), 100, 'exact original restored on delete — no phantom +200');
+});
+
+test('C1: editing rounds_fired DOWN after over-firing yields the exact expected quantity', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const { ammoCol, rifle } = await setup(app);
+  const ammo = (await request(app).post('/api/items').send({ collectionId: ammoCol.id, name: '9mm', quantity: 100 })).body;
+
+  const log = (await request(app).post(`/api/items/${rifle.id}/logs`).send({ logTypeKey: 'range_session', date: '2026-05-01', data: { rounds_fired: 300, ammo_item_id: ammo.id } })).body;
+  assert.strictEqual(await qty(app, ammo.id), 0, 'floored to 0 after firing 300 of 100');
+
+  // edit down to 50 -> on hand should be exactly 100 - 50 = 50 (bug used to yield 250)
+  await request(app).patch(`/api/logs/${log.id}`).send({ data: { rounds_fired: 50, ammo_item_id: ammo.id } });
+  assert.strictEqual(await qty(app, ammo.id), 50, 'edit-down after over-fire yields exact 50');
+});
+
+// H1: a single log carrying BOTH a rule-1 quantity effect (rounds_used) AND
+// ammo_item_id+rounds_fired must NOT double-decrement.
+test('H1: log on an ammo item with rounds_used + ammo_item_id does not double-decrement (no auto-usage link)', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const { ammoCol } = await setup(app);
+  const ammoA = (await request(app).post('/api/items').send({ collectionId: ammoCol.id, name: 'A', quantity: 1000 })).body;
+
+  // Host item IS ammo; rounds_used=100 (rule 1) AND ammo_item_id points at another ammo item.
+  const ammoB = (await request(app).post('/api/items').send({ collectionId: ammoCol.id, name: 'B', quantity: 1000 })).body;
+  const log = await request(app)
+    .post(`/api/items/${ammoA.id}/logs`)
+    .send({ logTypeKey: 'usage', date: '2026-05-01', data: { rounds_used: 100, rounds_fired: 100, ammo_item_id: ammoB.id } });
+  assert.strictEqual(log.status, 201);
+  // Rule 1 decrements the host (A) by 100. Rule 2 must be suppressed (host is ammo),
+  // so B is untouched and no usage log is auto-created.
+  assert.strictEqual(await qty(app, ammoA.id), 900, 'host ammo decremented once by rule 1');
+  assert.strictEqual(await qty(app, ammoB.id), 1000, 'referenced ammo untouched — rule 2 suppressed on ammo host');
+  assert.ok(!log.body.linkedLogId, 'no linked usage log created for an ammo-hosted log');
+});
+
+test('H1: self-referencing ammo_item_id (log on the same item) does not double-hit', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const { ammoCol } = await setup(app);
+  const ammo = (await request(app).post('/api/items').send({ collectionId: ammoCol.id, name: 'Self', quantity: 1000 })).body;
+
+  // A log on the ammo item that references ITSELF with rounds_fired must not decrement twice.
+  const log = await request(app)
+    .post(`/api/items/${ammo.id}/logs`)
+    .send({ logTypeKey: 'usage', date: '2026-05-01', data: { rounds_used: 100, rounds_fired: 100, ammo_item_id: ammo.id } });
+  assert.strictEqual(log.status, 201);
+  assert.strictEqual(await qty(app, ammo.id), 900, 'self-reference decremented once (rule 1 only), not twice');
+  assert.ok(!log.body.linkedLogId, 'no self-linked usage log');
+});
+
 test('ammo-choices lists ammo items with caliber', async (t) => {
   const { app, dataDir, ctx } = freshApp();
   cleanup(t, dataDir, ctx);

@@ -74,7 +74,7 @@ function dashboard(db) {
        ORDER BY (quantity - min_quantity) ASC`
     )
     .all()
-    .map((r) => ({ type: 'low_stock', itemId: r.itemId, name: r.name, quantity: r.quantity, minQuantity: r.minQuantity }));
+    .map((r) => ({ type: 'low_stock', itemId: r.itemId, name: r.name, quantity: itemSvc.displayQuantity(r.quantity), minQuantity: r.minQuantity }));
 
   return {
     totals: { items: totals.items, valueCents: totals.valueCents, collections: collectionsCount },

@@ -26,12 +26,15 @@ function itemIsAmmo(db, itemId) {
   return !!row && isAmmoCollection(db, row.collection_id);
 }
 
+// Store the TRUE signed quantity — do NOT clamp on write. Clamping here would make
+// a log-sourced decrement non-reversible (firing 300 from 100 floors to 0, but the
+// nominal reversal on delete adds back 300 → phantom rounds). The floor-at-0 UX is
+// applied at read/display time (see displayQuantity + buildSummary / itemCoreToApi).
 function adjustQuantity(db, itemId, delta) {
   if (!delta) return;
   const row = db.prepare('SELECT quantity FROM items WHERE id = ?').get(itemId);
   if (!row) return;
-  let q = num(row.quantity) + delta;
-  if (q < 0) q = 0; // floor 0
+  const q = num(row.quantity) + delta;
   db.prepare('UPDATE items SET quantity = ?, updated_at = ? WHERE id = ?').run(q, new Date().toISOString(), itemId);
 }
 
@@ -57,13 +60,19 @@ function reverseQtyEffect(db, itemId, data) {
 }
 
 // Determine whether a source log should spawn a linked usage log (rule 2).
-function shouldLink(db, data) {
+// `hostItemId` is the item the source log lives on. Rule 2 must NOT fire when:
+//   - the host item is itself an ammunition item (rule 1 already decrements it via
+//     rounds_used, so auto-linking would double-count), or
+//   - ammo_item_id points back at the host item (self-reference double-hit).
+function shouldLink(db, data, hostItemId) {
   if (!data) return null;
   const ammoItemId = data.ammo_item_id;
   const roundsFired = num(data.rounds_fired);
   if (ammoItemId == null || ammoItemId === '' || roundsFired <= 0) return null;
   const id = Number(ammoItemId);
   if (!Number.isInteger(id)) return null;
+  if (hostItemId != null && id === Number(hostItemId)) return null; // self-reference → double-hit
+  if (hostItemId != null && itemIsAmmo(db, hostItemId)) return null; // ammo host → rule 1 already handles it
   if (!itemIsAmmo(db, id)) return null; // only link to real ammo items
   return { ammoItemId: id, roundsFired };
 }

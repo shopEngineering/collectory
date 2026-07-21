@@ -78,6 +78,70 @@ test('CSV import new:<type> creates a field def and value', async (t) => {
   assert.strictEqual(item.fields[created.key], 'hello world');
 });
 
+// C3 + A2/A4: export→reimport must preserve multiselect ARRAY and checkbox BOOLEAN
+// types (not corrupt them into strings), and an explicitly-emptied cell must clear.
+test('C3/A2/A4: CSV round-trip preserves multiselect arrays and checkbox booleans, and empties clear', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const col = (await request(app).post('/api/collections').send({ name: 'Gear' })).body;
+  // Define a multiselect + checkbox field on the collection.
+  await request(app).put(`/api/collections/${col.id}/fields`).send({
+    fields: [
+      { key: 'traits', label: 'Traits', type: 'multiselect', options: ['premium', 'rare', 'used'] },
+      { key: 'verified', label: 'Verified', type: 'checkbox' },
+    ],
+  });
+  const item = (await request(app)
+    .post('/api/items')
+    .send({ collectionId: col.id, name: 'Widget', fields: { traits: ['premium', 'rare'], verified: true } })).body;
+  assert.deepStrictEqual(item.fields.traits, ['premium', 'rare'], 'stored as array');
+  assert.strictEqual(item.fields.verified, true, 'stored as boolean');
+
+  // export -> multiselect joined "premium; rare", checkbox stringified "true"
+  const csvText = (await request(app).get(`/api/export/csv?collectionId=${col.id}`)).text;
+  assert.match(csvText, /premium; rare/, 'multiselect exported joined');
+
+  // reimport the same CSV -> types must be restored, not stored as strings
+  const preview = await request(app).post(`/api/import/csv/preview?collectionId=${col.id}`).attach('file', Buffer.from(csvText), 'gear.csv');
+  const commit = await request(app).post('/api/import/csv/commit').send({ token: preview.body.token, collectionId: col.id, mapping: preview.body.suggestedMapping });
+  assert.strictEqual(commit.body.imported, 1);
+  assert.strictEqual(commit.body.errors.length, 0);
+
+  const after = (await request(app).get(`/api/items/${item.id}`)).body;
+  assert.deepStrictEqual(after.fields.traits, ['premium', 'rare'], 'multiselect round-tripped back to an ARRAY');
+  assert.strictEqual(after.fields.verified, true, 'checkbox round-tripped back to a BOOLEAN');
+
+  // A4: emptying the multiselect cell and re-importing by id must CLEAR the field.
+  const rows = 'id,name,field:traits,field:verified\n' + `${item.id},Widget,,true\n`;
+  const p2 = await request(app).post(`/api/import/csv/preview?collectionId=${col.id}`).attach('file', Buffer.from(rows), 'clear.csv');
+  await request(app).post('/api/import/csv/commit').send({ token: p2.body.token, collectionId: col.id, mapping: p2.body.suggestedMapping });
+  const cleared = (await request(app).get(`/api/items/${item.id}`)).body;
+  assert.strictEqual(cleared.fields.traits, undefined, 'explicitly-empty mapped cell cleared the multiselect field');
+});
+
+// H10: importing an export into the WRONG collection must error the row (its id
+// belongs to another collection), not silently insert a duplicate.
+test('H10: importing a row whose id belongs to a different collection errors instead of duplicating', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const colA = (await request(app).post('/api/collections').send({ name: 'A' })).body;
+  const colB = (await request(app).post('/api/collections').send({ name: 'B' })).body;
+  const itemA = (await request(app).post('/api/items').send({ collectionId: colA.id, name: 'Belongs to A' })).body;
+
+  // Export A, then try to commit it into B.
+  const csvText = (await request(app).get(`/api/export/csv?collectionId=${colA.id}`)).text;
+  const preview = await request(app).post(`/api/import/csv/preview?collectionId=${colB.id}`).attach('file', Buffer.from(csvText), 'a.csv');
+  const commit = await request(app).post('/api/import/csv/commit').send({ token: preview.body.token, collectionId: colB.id, mapping: preview.body.suggestedMapping });
+
+  assert.strictEqual(commit.body.imported, 0, 'no insert into the wrong collection');
+  assert.strictEqual(commit.body.errors.length, 1, 'the cross-collection row is errored');
+  assert.match(commit.body.errors[0].message, /another collection/i);
+  // B stays empty; A unchanged (still 1 item).
+  assert.strictEqual((await request(app).get(`/api/collections/${colB.id}/items`)).body.total, 0, 'B not populated');
+  assert.strictEqual((await request(app).get(`/api/collections/${colA.id}/items`)).body.total, 1, 'A unchanged');
+  void itemA;
+});
+
 test('myArmsCache-style import: empty column does not clobber name; nameless rows and comma quantities import', async (t) => {
   const { app, dataDir, ctx } = freshApp();
   cleanup(t, dataDir, ctx);

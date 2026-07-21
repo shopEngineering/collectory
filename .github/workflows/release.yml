@@ -21,15 +21,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for signing secrets
+      - name: Check for signing + notarization secrets
         id: signing
         env:
+          # All-or-nothing: a partial set (e.g. cert without Apple creds) would
+          # publish a signed-but-NOT-notarized hardened-runtime DMG that
+          # Gatekeeper blocks with no recovery path. Require every secret or skip.
           CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -n "$CSC_LINK" ]; then
+          if [ -n "$CSC_LINK" ] && [ -n "$CSC_KEY_PASSWORD" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::Signing secrets not configured — skipping the build so no unsigned release is published. Add CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID to enable automated signed releases."
+            echo "::warning::Signing+notarization secrets incomplete — skipping the build so no signed-but-unnotarized (Gatekeeper-blocked) release is published. Set ALL of CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 

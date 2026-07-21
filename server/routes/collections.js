@@ -3,12 +3,13 @@ const express = require('express');
 const m = require('../util/mappers');
 const err = require('../util/errors');
 const colSvc = require('../services/collections');
+const imageStore = require('../services/imageStore');
 
 // asyncH wraps handlers so thrown errors reach the central error middleware.
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 module.exports = function collectionsRouter(ctx) {
-  const { db } = ctx;
+  const { db, dataDir } = ctx;
   const r = express.Router();
 
   // GET /api/collections — list with aggregates
@@ -76,17 +77,25 @@ module.exports = function collectionsRouter(ctx) {
     if (count > 0 && !force) {
       throw err.conflict(`collection has ${count} items; pass ?force=true to soft-delete them`, 'NOT_EMPTY');
     }
+    // Force-delete is a coherent PERMANENT delete: DELETE FROM collections cascades
+    // (FK ON DELETE CASCADE) and HARD-deletes every item row and its photos/attachments.
+    // A soft-delete stamp here would be discarded by the cascade, so instead we gather
+    // ALL media filenames FIRST (including any already-trashed items, whose rows also
+    // cascade away), delete the collection, then unlink the orphaned files from disk.
+    const photos = db
+      .prepare('SELECT p.filename FROM photos p JOIN items i ON i.id = p.item_id WHERE i.collection_id = ?')
+      .all(id);
+    const attachments = db
+      .prepare('SELECT a.filename FROM attachments a JOIN items i ON i.id = a.item_id WHERE i.collection_id = ?')
+      .all(id);
+    const itemSvc = require('../services/items');
     db.transaction(() => {
-      if (count > 0) {
-        const now = new Date().toISOString();
-        const items = db.prepare('SELECT id FROM items WHERE collection_id = ? AND deleted_at IS NULL').all(id);
-        for (const it of items) {
-          db.prepare('UPDATE items SET deleted_at = ? WHERE id = ?').run(now, it.id);
-          require('../services/items').removeFts(db, it.id);
-        }
-      }
-      db.prepare('DELETE FROM collections WHERE id = ?').run(id);
+      const items = db.prepare('SELECT id FROM items WHERE collection_id = ?').all(id);
+      for (const it of items) itemSvc.removeFts(db, it.id);
+      db.prepare('DELETE FROM collections WHERE id = ?').run(id); // cascades items/logs/photos/attachments/etc
     })();
+    for (const p of photos) imageStore.removePhotoFiles(dataDir, p.filename);
+    for (const a of attachments) imageStore.removeAttachmentFile(dataDir, a.filename);
     res.json({ ok: true });
   }));
 

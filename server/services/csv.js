@@ -35,6 +35,43 @@ function toNumber(str, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const NUMERIC_FIELD_TYPES = new Set(['number', 'currency', 'year', 'rating']);
+const MULTI_FIELD_TYPES = new Set(['multiselect', 'item_refs']);
+
+// Coerce a raw CSV cell into the typed value for a target field. `type` is the
+// field_defs.type (may be undefined for a brand-new/unknown field → store as string).
+// Returns { value } where value is the typed value, or null to indicate an empty
+// cell (caller decides clear-vs-skip). This restores round-trip fidelity: export
+// joins arrays with "; " and stringifies everything; import must reverse that.
+function coerceFieldValue(raw, type) {
+  const s = raw == null ? '' : String(raw).trim();
+  if (s === '') return null; // empty cell — caller clears (UPDATE) or skips (INSERT)
+  if (MULTI_FIELD_TYPES.has(type)) {
+    const arr = s.split(/[;,]/).map((x) => x.trim()).filter(Boolean);
+    if (type === 'item_refs') {
+      const ids = arr.map((x) => Number(x)).filter((n) => Number.isInteger(n) && n > 0);
+      return { value: ids };
+    }
+    return { value: arr };
+  }
+  if (type === 'checkbox') {
+    return { value: /^(1|true|yes|y|on|checked)$/i.test(s) };
+  }
+  if (NUMERIC_FIELD_TYPES.has(type)) {
+    const n = toNumber(s, null);
+    return { value: n == null ? s : n }; // un-parseable → keep string rather than lose data
+  }
+  if (type === 'item_ref' || type === 'ammo_ref') {
+    const n = Number(s);
+    return { value: Number.isInteger(n) && n > 0 ? n : s };
+  }
+  if (type === 'date') {
+    // Keep valid-ish ISO dates; store anything else verbatim (don't crash on junk).
+    return { value: s };
+  }
+  return { value: raw }; // text/textarea/url/select/unknown — store the original cell
+}
+
 // Build CSV string for a collection: core columns + one per field_def + tags.
 function exportCollection(db, collectionId) {
   const fieldDefs = db.prepare('SELECT * FROM field_defs WHERE collection_id = ? ORDER BY sort_order, id').all(collectionId);
@@ -181,10 +218,19 @@ function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) 
     }
   }
 
+  // Field key -> declared type, so each cell is coerced to the target field's type
+  // (multiselect → array, checkbox → bool, number → number, …). Built after new:
+  // defs are created so freshly-added fields are typed too.
+  const fieldTypes = {};
+  for (const fd of db.prepare('SELECT key, type FROM field_defs WHERE collection_id = ?').all(collectionId)) {
+    fieldTypes[fd.key] = fd.type;
+  }
+
   rows.forEach((raw, idx) => {
     try {
       const core = {};
       const fields = {};
+      const clearedFields = []; // field keys explicitly mapped but empty → clear on UPDATE (A4)
       let tags = null;
       let providedId = null;
 
@@ -204,7 +250,9 @@ function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) 
           if (core[k] === undefined || (curEmpty && !valEmpty)) core[k] = value;
         } else if (target.startsWith('field:')) {
           const key = target.slice('field:'.length);
-          if (value != null && String(value).trim() !== '') fields[key] = value;
+          const coerced = coerceFieldValue(value, fieldTypes[key]);
+          if (coerced === null) clearedFields.push(key); // explicitly-empty mapped cell clears the field
+          else fields[key] = coerced.value;
         }
       }
 
@@ -231,10 +279,18 @@ function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) 
       const coreCols = mapCoreForDb(core, now);
 
       if (providedId != null && !Number.isNaN(providedId)) {
+        // Guard against importing an export into the WRONG collection: if this id
+        // belongs to a different collection, the "not found here → insert new" path
+        // would silently duplicate the item. Error the row instead (H10).
+        const owner = db.prepare('SELECT collection_id FROM items WHERE id = ?').get(providedId);
+        if (owner && owner.collection_id !== collectionId) {
+          throw new Error(`id ${providedId} belongs to another collection — importing into the wrong collection`);
+        }
         const existing = db.prepare('SELECT * FROM items WHERE id = ? AND collection_id = ?').get(providedId, collectionId);
         if (existing) {
-          // UPDATE: merge fields into existing
+          // UPDATE: merge fields into existing; explicitly-empty mapped cells clear their key (A4).
           const merged = { ...m.parseJson(existing.fields_json, {}), ...fields };
+          for (const k of clearedFields) delete merged[k];
           const set = { ...coreCols, fields_json: JSON.stringify(merged), updated_at: now };
           // Don't overwrite name with blank
           if (set.name == null || String(set.name).trim() === '') delete set.name;

@@ -4,6 +4,13 @@
 // the DESIGN.md §3/§4 contract. Money stays integer cents throughout.
 
 const bool = (v) => v === 1 || v === true;
+// Quantity is stored signed (log-sourced decrements stay reversible) but surfaced
+// floored at 0 as "on hand". Keep this in sync with items.displayQuantity.
+const onHandQty = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : n;
+};
 const parseJson = (s, fallback) => {
   if (s === null || s === undefined) return fallback;
   try {
@@ -101,7 +108,7 @@ function itemCoreToApi(row) {
     collectionId: row.collection_id,
     name: row.name,
     status: row.status,
-    quantity: row.quantity,
+    quantity: onHandQty(row.quantity),
     minQuantity: row.min_quantity,
     acquiredDate: row.acquired_date,
     acquiredPriceCents: row.acquired_price_cents,

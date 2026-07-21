@@ -94,6 +94,29 @@ test('LAN gate: enabled with PIN requires cookie -> 401 PIN_REQUIRED', (t) => {
   assert.ok(staticNexted, 'static asset served so PIN screen can load');
 });
 
+// C4: a spoofed X-Forwarded-For must NOT make a LAN peer look like loopback and
+// bypass the gate. The gate reads the real socket peer, never req.ip / XFF.
+test('C4: spoofed X-Forwarded-For does not bypass the gate (uses real socket peer)', (t) => {
+  const { dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+  const gate = makeLanGate(ctx); // LAN disabled by default
+
+  // Simulate Express having trusted a forged XFF (req.ip = 127.0.0.1) while the
+  // real socket peer is a LAN address. The gate must reject, not pass.
+  const spoofed = {
+    ip: '127.0.0.1', // attacker-forged, must be ignored
+    path: '/api/export/json',
+    socket: { remoteAddress: '192.168.1.66' }, // the real peer
+    signedCookies: {},
+  };
+  const res = mockRes();
+  let nexted = false;
+  gate(spoofed, res, () => (nexted = true));
+  assert.ok(!nexted, 'forged loopback did not pass the gate');
+  assert.strictEqual(res.statusCode, 403);
+  assert.strictEqual(res.body.error.code, 'LAN_DISABLED');
+});
+
 // --- Settings + auth integration ---
 
 test('settings GET/PATCH and PIN auth flow', async (t) => {

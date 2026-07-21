@@ -52,8 +52,9 @@ module.exports = function logsRouter(ctx) {
       // Rule 1: quantity effect if this log lives on an ammo item
       ammo.applyQtyEffect(db, itemId, data);
 
-      // Rule 2: auto-create linked usage log on the referenced ammo item
-      const link = ammo.shouldLink(db, data);
+      // Rule 2: auto-create linked usage log on the referenced ammo item.
+      // Suppressed when the host is an ammo item or self-referencing (double-count guard).
+      const link = ammo.shouldLink(db, data, itemId);
       if (link) ammo.createLinkedUsage(db, source, link);
 
       return logId;
@@ -216,7 +217,7 @@ module.exports = function logsRouter(ctx) {
 // After editing a source log, reconcile its rule-2 linked usage log.
 function reconcileLink(db, sourceId, before, newData, dataChanged) {
   const source = db.prepare('SELECT * FROM logs WHERE id = ?').get(sourceId);
-  const link = ammo.shouldLink(db, newData);
+  const link = ammo.shouldLink(db, newData, before.item_id);
   const existingUsageId = before.linked_log_id;
   const existingUsage = existingUsageId ? db.prepare('SELECT * FROM logs WHERE id = ?').get(existingUsageId) : null;
   const existingIsUsage = existingUsage && m.parseJson(existingUsage.data_json, {}).source_item_id != null;

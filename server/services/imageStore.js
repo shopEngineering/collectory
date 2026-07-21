@@ -38,6 +38,17 @@ function extOf(name, fallback) {
   return e || fallback || '';
 }
 
+// Reject file types that can execute script when served (SVG/HTML/XML). Even with
+// nosniff + download disposition on the serving side, we refuse these at intake so
+// a planted active-content file never lands in the library (H6, defense in depth).
+const DANGEROUS_MIME = /(^text\/html$|^application\/xhtml\+xml$|svg|xml|^text\/xml$)/i;
+const DANGEROUS_EXT = /\.(svg|svgz|html?|xhtml|xml)$/i;
+function isDangerousUpload(originalName, mime) {
+  if (mime && DANGEROUS_MIME.test(String(mime))) return true;
+  if (originalName && DANGEROUS_EXT.test(String(originalName))) return true;
+  return false;
+}
+
 // multer instances writing to <dataDir>/tmp
 function makeUploader(dataDir, limitBytes) {
   const d = ensureDirs(dataDir);
@@ -107,6 +118,7 @@ module.exports = {
   ensureDirs,
   uuid,
   extOf,
+  isDangerousUpload,
   makeUploader,
   storeOriginal,
   storeThumb,

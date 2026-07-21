@@ -129,7 +129,11 @@
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
     box-shadow var(--dur-fast) var(--ease);
 }
-@media (min-width: 900px) {
+/* Compact desktop density: gate on a real mouse/desktop pointer, NOT width.
+   Width-based (min-width:900px) fired on iPad landscape (≥1024px) and dropped
+   inputs below 16px, reintroducing iOS zoom-on-focus. pointer:fine keeps 16px
+   on every touch device regardless of screen size. */
+@media (any-hover: hover) and (pointer: fine) {
   .input,
   .textarea,
   .select {

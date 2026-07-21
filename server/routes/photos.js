@@ -21,6 +21,12 @@ module.exports = function photosRouter(ctx) {
     const photoFile = files.photo && files.photo[0];
     const thumbFile = files.thumb && files.thumb[0];
     if (!photoFile) throw err.badRequest("missing 'photo' file part", 'VALIDATION');
+    // Reject active-content image types (SVG/HTML/XML) — they can execute script.
+    if (imageStore.isDangerousUpload(photoFile.originalname, photoFile.mimetype)) {
+      imageStore.safeUnlink(photoFile.path);
+      if (thumbFile) imageStore.safeUnlink(thumbFile.path);
+      throw err.badRequest('unsupported image type (SVG/HTML/XML not allowed)', 'BAD_UPLOAD');
+    }
     const filename = imageStore.storeOriginal(dataDir, photoFile.path, photoFile.originalname);
     imageStore.storeThumb(dataDir, filename, thumbFile ? thumbFile.path : null);
     const now = new Date().toISOString();
@@ -120,6 +126,11 @@ module.exports = function photosRouter(ctx) {
     const itemId = Number(req.params.id);
     if (!db.prepare('SELECT 1 FROM items WHERE id = ?').get(itemId)) throw err.notFound('item not found');
     if (!req.file) throw err.badRequest("missing 'file' part", 'VALIDATION');
+    // Reject active-content types (SVG/HTML/XML) that could execute if opened.
+    if (imageStore.isDangerousUpload(req.file.originalname, req.file.mimetype)) {
+      imageStore.safeUnlink(req.file.path);
+      throw err.badRequest('unsupported attachment type (SVG/HTML/XML not allowed)', 'BAD_UPLOAD');
+    }
     const filename = imageStore.storeAttachment(dataDir, req.file.path, req.file.originalname);
     const info = db
       .prepare(

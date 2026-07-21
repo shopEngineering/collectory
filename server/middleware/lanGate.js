@@ -6,9 +6,15 @@ const OPEN_API_PATHS = new Set(['/api/health', '/api/auth/pin']);
 
 function isLoopback(ip) {
   if (!ip) return true; // no address -> treat as local (in-process/test)
-  // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1)
+  // Normalize IPv6-mapped IPv4 (::ffff:127.0.0.1) then check loopback forms.
   const addr = ip.replace(/^::ffff:/, '');
   return addr === '127.0.0.1' || addr === '::1' || addr === 'localhost' || addr.startsWith('127.');
+}
+
+// The trustworthy peer address: the real socket remote, NOT req.ip (which can be
+// derived from a spoofable X-Forwarded-For header). Never fall back to req.ip.
+function peerAddress(req) {
+  return (req.socket && req.socket.remoteAddress) || null;
 }
 
 // Which requests are gated? /api/* (except open paths), /images, /attachments.
@@ -21,7 +27,8 @@ function isGatedPath(pathName) {
 // Build the LAN gate middleware. `ctx` provides db (mutable) for settings/cookie checks.
 function makeLanGate(ctx) {
   return function lanGate(req, res, next) {
-    const remote = req.ip || (req.socket && req.socket.remoteAddress);
+    // Use the real socket peer — a spoofed X-Forwarded-For must never look loopback.
+    const remote = peerAddress(req);
     if (isLoopback(remote)) return next(); // loopback always allowed
     if (!isGatedPath(req.path)) return next(); // static assets always served
 
@@ -41,4 +48,4 @@ function makeLanGate(ctx) {
   };
 }
 
-module.exports = { makeLanGate, isLoopback, isGatedPath, OPEN_API_PATHS };
+module.exports = { makeLanGate, isLoopback, isGatedPath, peerAddress, OPEN_API_PATHS };

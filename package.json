@@ -1,13 +1,15 @@
 {
   "name": "collectory",
   "productName": "The Collectory",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Local-first collection manager for firearms, ammunition, knives, coins, stamps, and anything else you collect. No servers, no cloud, no telemetry.",
   "main": "electron/main.js",
   "license": "MIT",
   "author": "Collectory",
   "repository": "github:shopEngineering/collectory",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"COLLECTORY_DATA_DIR=.data-dev nodemon --watch server --ext js,json,sql server/index.js\" \"npm --prefix client run dev\"",
     "dev:app": "ELECTRON_START_URL=http://localhost:5173 electron .",
@@ -20,7 +22,7 @@
     "release": "npm run build && electron-builder --mac --config electron-builder.config.js --publish always"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "better-sqlite3": "^12.2.0",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.2",

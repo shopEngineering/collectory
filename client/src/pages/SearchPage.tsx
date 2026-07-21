@@ -30,8 +30,9 @@ export function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedInput]);
 
-  const debouncedQ = useDebouncedValue(q, 250);
-  const { data, isLoading } = useSearch(debouncedQ);
+  // Single debounce: drive the query directly off the debounced input (the URL
+  // is a write-only mirror for shareability). Avoids the old ~500ms double-debounce.
+  const { data, isLoading } = useSearch(debouncedInput);
 
   const groups = useMemo(() => {
     const byCollection = new Map<string, SearchResult[]>();
@@ -68,14 +69,14 @@ export function SearchPage() {
 
       {isLoading ? (
         <LoadingBlock label="Searching…" />
-      ) : !q.trim() ? (
+      ) : !debouncedInput.trim() ? (
         <EmptyState
           illustration={<Icon name="search" size={40} />}
           title="Type to search"
           message="Search by name, notes, serial number, or any field value — across every collection."
         />
       ) : groups.length === 0 ? (
-        <EmptyState title="No matches" message={`No matches for "${q}".`} />
+        <EmptyState title="No matches" message={`No matches for "${debouncedInput}".`} />
       ) : (
         groups.map(([collectionName, results]) => (
           <div key={collectionName} className="dash-section">

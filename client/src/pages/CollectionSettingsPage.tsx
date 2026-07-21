@@ -7,11 +7,14 @@ import { Modal, ConfirmDialog, LoadingBlock, ErrorBlock, Switch } from '../compo
 import { useToast } from '../components/Toast';
 import {
   useCollection,
+  useCollections,
+  useTemplates,
   useUpdateCollection,
   useSaveFields,
   useSaveLogTypes,
   useDeleteCollection,
 } from '../api/hooks';
+import { useBeforeUnload, useNavigationBlocker } from '../lib/hooks';
 import type { FieldDef, FieldType, LogTypeDef } from '../api/types';
 
 const COLOR_SWATCHES = [
@@ -35,6 +38,9 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'checkbox', label: 'Checkbox' },
   { value: 'url', label: 'URL' },
   { value: 'rating', label: 'Rating' },
+  { value: 'item_ref', label: 'Item reference (one)' },
+  { value: 'item_refs', label: 'Item reference (multiple)' },
+  { value: 'ammo_ref', label: 'Ammunition reference' },
 ];
 
 // snake_case key from a human label, e.g. "Barrel Length" -> "barrel_length".
@@ -65,10 +71,27 @@ export function CollectionSettingsPage() {
   const toast = useToast();
 
   const { data: collection, isLoading, error } = useCollection(cid);
+  const { data: templates } = useTemplates();
+  const { data: collections } = useCollections();
   const updateCollection = useUpdateCollection(cid);
   const saveFields = useSaveFields(cid);
   const saveLogTypes = useSaveLogTypes(cid);
   const deleteCollection = useDeleteCollection();
+
+  // Item count for the delete-collection copy. The list endpoint carries
+  // itemCount; fall back to the (possibly present) detail value.
+  const itemCount = collections?.find((c) => c.id === cid)?.itemCount ?? collection?.itemCount ?? 0;
+
+  // Template keys a ref field can target (built-in templates + any template a
+  // collection was created from). Deduped, used by the FieldModal refTemplate picker.
+  const refTemplateOptions: { value: string; label: string }[] = (() => {
+    const seen = new Map<string, string>();
+    for (const t of templates ?? []) seen.set(t.key, t.name);
+    for (const c of collections ?? []) {
+      if (c.templateKey && !seen.has(c.templateKey)) seen.set(c.templateKey, c.templateKey);
+    }
+    return Array.from(seen, ([value, label]) => ({ value, label }));
+  })();
 
   // ---- Meta form state ----
   const [name, setName] = useState('');
@@ -108,6 +131,11 @@ export function CollectionSettingsPage() {
     setLogTypes(collection.logTypes);
     setLogTypesDirty(false);
   }, [collection]);
+
+  // Unsaved-work guard: field/log-type/meta edits are client-only until saved.
+  const anyDirty = metaDirty || fieldsDirty || logTypesDirty;
+  useBeforeUnload(anyDirty);
+  const disarmNavGuard = useNavigationBlocker(anyDirty);
 
   if (isLoading) return <LoadingBlock label="Loading collection…" />;
   if (error || !collection) return <ErrorBlock message={error instanceof Error ? error.message : 'Collection not found'} />;
@@ -210,6 +238,8 @@ export function CollectionSettingsPage() {
   const doDelete = async (force: boolean) => {
     try {
       await deleteCollection.mutateAsync({ id: cid, force });
+      // Collection is gone — bypass the nav guard so it doesn't prompt on exit.
+      disarmNavGuard();
       toast.success('Collection deleted');
       navigate('/');
     } catch (e) {
@@ -396,8 +426,9 @@ export function CollectionSettingsPage() {
           Danger zone
         </span>
         <p style={{ color: 'var(--ink-3)', fontSize: 13, margin: '8px 0 16px' }}>
-          Permanently delete this collection. Items inside will need to be empty, or moved to trash with
-          a forced delete.
+          {itemCount > 0
+            ? `Permanently delete this collection and all ${itemCount} item${itemCount === 1 ? '' : 's'} it contains, including their photos. This cannot be undone.`
+            : 'Permanently delete this empty collection. This cannot be undone.'}
         </p>
         <button className="btn btn-danger" onClick={() => setConfirmDelete(true)}>
           <Icon name="trash" size={14} /> Delete collection
@@ -409,6 +440,7 @@ export function CollectionSettingsPage() {
         <FieldModal
           field={editingField}
           existingKeys={existingFieldKeys}
+          refTemplateOptions={refTemplateOptions}
           onCancel={() => setFieldModalOpen(false)}
           onSave={upsertField}
         />
@@ -433,6 +465,7 @@ export function CollectionSettingsPage() {
         <LogTypeModal
           logType={editingLogType}
           existingKeys={existingLogTypeKeys}
+          refTemplateOptions={refTemplateOptions}
           onCancel={() => setLogTypeModalOpen(false)}
           onSave={upsertLogType}
         />
@@ -456,8 +489,12 @@ export function CollectionSettingsPage() {
       <ConfirmDialog
         open={confirmDelete}
         title="Delete collection"
-        message={`Delete "${collection.name}"? This can't be undone unless the collection is empty. If it isn't empty, you'll be offered the option to force-delete (items move to trash).`}
-        confirmLabel="Delete"
+        message={
+          itemCount > 0
+            ? `Permanently delete "${collection.name}" and all ${itemCount} item${itemCount === 1 ? '' : 's'} it contains, along with their photos? This cannot be undone.`
+            : `Delete "${collection.name}"? This cannot be undone.`
+        }
+        confirmLabel={itemCount > 0 ? `Delete ${itemCount} item${itemCount === 1 ? '' : 's'}` : 'Delete'}
         danger
         onConfirm={() => {
           setConfirmDelete(false);
@@ -469,8 +506,8 @@ export function CollectionSettingsPage() {
       <ConfirmDialog
         open={confirmForceDelete}
         title="Collection isn't empty"
-        message="This collection still has items. Force-deleting will move all its items to trash and delete the collection. You can restore items from trash later."
-        confirmLabel="Force delete"
+        message={`This collection still has ${itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'items'}. Deleting it will permanently remove every item and its photos — this cannot be undone.`}
+        confirmLabel="Permanently delete"
         danger
         onConfirm={() => {
           setConfirmForceDelete(false);
@@ -596,11 +633,13 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (op
 function FieldModal({
   field,
   existingKeys,
+  refTemplateOptions,
   onCancel,
   onSave,
 }: {
   field: FieldDef | null;
   existingKeys: string[];
+  refTemplateOptions: { value: string; label: string }[];
   onCancel: () => void;
   onSave: (f: FieldDef) => void;
 }) {
@@ -613,28 +652,61 @@ function FieldModal({
   const [help, setHelp] = useState(field?.help ?? '');
   const [required, setRequired] = useState(!!field?.required);
   const [options, setOptions] = useState<string[]>(field?.options ?? []);
+  // ammo_ref is sugar for item_ref restricted to the ammunition template.
+  const [refTemplate, setRefTemplate] = useState<string>(
+    field?.refTemplate ?? (field?.type === 'ammo_ref' ? 'ammunition' : ''),
+  );
   const toast = useToast();
 
   const needsOptions = type === 'select' || type === 'multiselect';
+  const needsRef = type === 'item_ref' || type === 'item_refs';
 
-  const save = () => {
-    if (!label.trim()) {
-      toast.error('Please enter a label');
-      return;
-    }
+  // Build the FieldDef to save. Merge the ORIGINAL field first so properties
+  // the modal doesn't edit (showInTable/showOnCard, and any future keys) are
+  // preserved; then override editable fields and prune type-specific keys that
+  // no longer apply. (FC4: editing a field must not wipe table/card/refTemplate.)
+  const buildDef = (): FieldDef => {
     const key = isEdit ? field!.key : uniqueKey(slugify(label), existingKeys);
     const def: FieldDef = {
+      ...(field ?? {}),
       key,
       label: label.trim(),
       type,
       section: section.trim() || 'Details',
       required,
     };
-    if (unit.trim()) def.unit = unit.trim();
-    if (placeholder.trim()) def.placeholder = placeholder.trim();
-    if (help.trim()) def.help = help.trim();
+    // Unit (number only)
+    if (type === 'number' && unit.trim()) def.unit = unit.trim();
+    else delete def.unit;
+    // Options (select/multiselect only)
     if (needsOptions) def.options = options.map((o) => o.trim()).filter(Boolean);
-    onSave(def);
+    else delete def.options;
+    // refTemplate (ref types only); ammo_ref pins ammunition.
+    if (type === 'ammo_ref') def.refTemplate = 'ammunition';
+    else if (needsRef && refTemplate) def.refTemplate = refTemplate;
+    else delete def.refTemplate;
+    // Placeholder / help are optional across all types.
+    if (placeholder.trim()) def.placeholder = placeholder.trim();
+    else delete def.placeholder;
+    if (help.trim()) def.help = help.trim();
+    else delete def.help;
+    return def;
+  };
+
+  const save = () => {
+    if (!label.trim()) {
+      toast.error('Please enter a label'); // FC5: required field with no label is rejected.
+      return;
+    }
+    // FC5: warn when an existing field's type changes destructively — stored
+    // values for the old type may not convert to the new one.
+    if (isEdit && field!.type !== type) {
+      const ok = window.confirm(
+        `Changing the type from "${field!.type}" to "${type}" may make existing values on items unreadable or blank — they are not converted. Continue?`,
+      );
+      if (!ok) return;
+    }
+    onSave(buildDef());
   };
 
   return (
@@ -682,6 +754,31 @@ function FieldModal({
           <label className="field-label">Section</label>
           <input className="input" value={section} onChange={(e) => setSection(e.target.value)} />
         </div>
+
+        {needsRef && (
+          <div className="field full">
+            <label className="field-label">References</label>
+            <select
+              className="select"
+              value={refTemplate}
+              onChange={(e) => setRefTemplate(e.target.value)}
+            >
+              <option value="">Any item</option>
+              {refTemplateOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <span className="field-help">Restrict the picker to items from this template.</span>
+          </div>
+        )}
+
+        {type === 'ammo_ref' && (
+          <div className="field full">
+            <span className="field-help">Links to items in ammunition collections.</span>
+          </div>
+        )}
 
         {type === 'number' && (
           <div className="field">
@@ -770,11 +867,13 @@ function LogTypeRow({
 function LogTypeModal({
   logType,
   existingKeys,
+  refTemplateOptions,
   onCancel,
   onSave,
 }: {
   logType: LogTypeDef | null;
   existingKeys: string[];
+  refTemplateOptions: { value: string; label: string }[];
   onCancel: () => void;
   onSave: (lt: LogTypeDef) => void;
 }) {
@@ -937,6 +1036,7 @@ function LogTypeModal({
         <FieldModal
           field={editingSubField}
           existingKeys={ltFields.map((f) => f.key)}
+          refTemplateOptions={refTemplateOptions}
           onCancel={() => setSubFieldModalOpen(false)}
           onSave={upsertSubField}
         />

@@ -20,6 +20,14 @@ const CORE_PATCHABLE = {
   notes: 'notes',
 };
 
+// Coerce a client-supplied numeric field, throwing a clean 400 (not a 500 from a
+// NaN bind) when the value is present but non-numeric (e.g. quantity: "abc").
+function numOr400(v, label) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw err.badRequest(`${label} must be a number`, 'VALIDATION');
+  return n;
+}
+
 const SORT_MAP = {
   name: 'name',
   acquiredDate: 'acquired_date',
@@ -131,12 +139,12 @@ module.exports = function itemsRouter(ctx) {
           collection_id: collectionId,
           name: b.name,
           status: b.status || 'owned',
-          quantity: b.quantity != null ? Number(b.quantity) : 1,
-          min_quantity: b.minQuantity != null ? Number(b.minQuantity) : null,
+          quantity: b.quantity != null ? numOr400(b.quantity, 'quantity') : 1,
+          min_quantity: b.minQuantity != null ? numOr400(b.minQuantity, 'minQuantity') : null,
           acquired_date: b.acquiredDate || null,
-          acquired_price_cents: b.acquiredPriceCents != null ? Math.round(Number(b.acquiredPriceCents)) : null,
+          acquired_price_cents: b.acquiredPriceCents != null ? Math.round(numOr400(b.acquiredPriceCents, 'acquiredPriceCents')) : null,
           acquired_from: b.acquiredFrom || null,
-          current_value_cents: b.currentValueCents != null ? Math.round(Number(b.currentValueCents)) : null,
+          current_value_cents: b.currentValueCents != null ? Math.round(numOr400(b.currentValueCents, 'currentValueCents')) : null,
           value_updated_at: b.currentValueCents != null ? now : null,
           notes: b.notes || '',
           fields_json: JSON.stringify(cleanFields(b.fields)),
@@ -178,8 +186,8 @@ module.exports = function itemsRouter(ctx) {
       for (const [apiKey, col] of Object.entries(CORE_PATCHABLE)) {
         if (b[apiKey] === undefined) continue;
         let val = b[apiKey];
-        if (col.endsWith('_cents') && val != null) val = Math.round(Number(val));
-        else if ((col === 'quantity' || col === 'min_quantity') && val != null) val = Number(val);
+        if (col.endsWith('_cents') && val != null) val = Math.round(numOr400(val, apiKey));
+        else if ((col === 'quantity' || col === 'min_quantity') && val != null) val = numOr400(val, apiKey);
         set[col] = val;
       }
       // currentValueCents change stamps value_updated_at

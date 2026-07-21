@@ -149,6 +149,15 @@ function num(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Clamp a stored quantity to its "on hand" display value (never below 0). The
+// stored counter may go negative (see services/ammo.js adjustQuantity) so
+// log-sourced decrements stay exactly reversible; consumers surfacing quantity
+// as "on hand" (summary/full item, low-stock alerts, ammo-choices) use this.
+function displayQuantity(v) {
+  const n = num(v);
+  return n < 0 ? 0 : n;
+}
+
 // ---------------------------------------------------------------------------
 // Item assembly
 // ---------------------------------------------------------------------------
@@ -169,7 +178,7 @@ function buildSummary(db, row) {
     collectionId: row.collection_id,
     name: row.name,
     status: row.status,
-    quantity: row.quantity,
+    quantity: displayQuantity(row.quantity), // floor-0 at display; stored value stays signed for reversibility
     acquiredDate: row.acquired_date,
     acquiredPriceCents: row.acquired_price_cents,
     currentValueCents: row.current_value_cents,
@@ -207,4 +216,5 @@ module.exports = {
   buildSummary,
   buildFull,
   num,
+  displayQuantity,
 };

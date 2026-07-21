@@ -12,6 +12,13 @@ test('migrations bootstrap: schema created, migration recorded, health ok', asyn
   const migs = ctx.db.prepare('SELECT name FROM _migrations').all().map((r) => r.name);
   assert.ok(migs.includes('001_init.sql'), 'init migration recorded');
 
+  // H5: photos(item_id) / photos(log_id) indices exist (migration 004)
+  const indexes = new Set(
+    ctx.db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map((r) => r.name)
+  );
+  assert.ok(indexes.has('idx_photos_item'), 'idx_photos_item present');
+  assert.ok(indexes.has('idx_photos_log'), 'idx_photos_log present');
+
   // All core tables exist
   const tables = new Set(
     ctx.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r) => r.name)
