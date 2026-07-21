@@ -1369,7 +1369,9 @@ table.data.editable tbody td.cell-name {
   table.data.editable tbody td.editable-cell:hover {
     background: var(--brass-ghost);
     box-shadow: inset 0 0 0 1px var(--brass-ring);
-    cursor: text;
+    /* Pointer, not text: the row's primary action is to open the item on click;
+       double-click still edits the cell. */
+    cursor: pointer;
   }
 }
 table.data.editable tbody td.editable-cell {

@@ -7,3 +7,6 @@ release/
 .DS_Store
 *.log
 npm-debug.log*
+
+# private sample data (real serial numbers) — never publish
+docs/template/
