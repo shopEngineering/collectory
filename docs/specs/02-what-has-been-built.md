@@ -1,5 +1,40 @@
 # 02 — What Has Been Built (v1.0.0 + same-day v1.1 features, 2026-07-19)
 
+## Release history & verification (through v1.0.7, 2026-07-21)
+- **1.0.2** — display rename to "The Collectory" (data folder pinned to `Collectory` via
+  `app.setPath`); **Developer ID signing + Apple notarization** established. Build flow: electron
+  signs the app; DMGs are signed separately, then `notarytool submit --keychain-profile
+  collectory-notary` + `stapler staple` (electron-builder leaves the DMG unsigned → Gatekeeper
+  blocks on mount otherwise). Verified via fresh-download + quarantine + `spctl` → Notarized
+  Developer ID.
+- **1.0.3** — repo made public; `electron/updater.js` + "Check for Updates" (queries public Releases
+  API, one-click DMG download); Accessories & Parts built-in templates (item_ref → firearms); GitHub
+  Pages download page (`web/index.html` via `.github/workflows/pages.yml`); version-independent DMG
+  names for stable `/releases/latest/download/` links.
+- **1.0.4** — CSV import for real myArmsCache exports: dedup single-value core targets (empty "Item #"
+  no longer clobbers Name), derive a name for nameless ammo rows (manufacturer + caliber), parse
+  thousands-comma quantities. Verified against real files: 3/3 guns, 138/138 ammo.
+- **1.0.5** — import preview now receives the chosen `collectionId`, so columns auto-map to that
+  collection's fields (20/26 firearms columns map automatically) instead of defaulting to "skip".
+- **1.0.6** — table view: every column header sortable (core, status, and dynamic fields via
+  `json_extract`, numeric fields numerically, key bound as a param); clickable-row pointer cursor.
+- **1.0.7 — full review remediation** (below).
+
+## v1.0.7 — security & data-integrity review fixes
+Four independent review passes (security · backend · frontend · data/packaging) → 4 critical + 10
+high findings, all fixed with regression tests. **57 backend tests (15 new), client build clean,
+`npm audit` clean.** Criticals: ammo round-count reversibility (signed storage, display-clamp);
+collection force-delete now a coherent permanent delete + photo/attachment file cleanup; CSV
+round-trip preserves multiselect/checkbox/number types + empties clear; LAN gate reads the socket
+peer (no X-Forwarded-For spoof). Highs: no ammo double-decrement (self-ref/host-type guard);
+crash-safe restore (validate-before-destroy + auto-rollback from safety zip + `meta.version` gate);
+adm-zip → 0.6.0 (CVE); CI requires ALL signing+notarization secrets; photos indices (no N+1);
+attachments served as downloads + `nosniff`, svg/html uploads rejected; iPad-landscape inputs stay
+≥16px; field editor preserves show-in-table/on-card/refTemplate + supports ref fields + validates;
+unsaved-work guarded on in-app navigation; malformed numbers → 400, DB constraints → 409/400. Plus a
+Content-Security-Policy. Deferred (documented in 03-roadmap): keyboard-a11y sweep, list
+virtualization, multer 2.x, PIN KDF, `--ink-4` contrast, restore cookie-secret continuity.
+
 ## Post-v1.0 same-day additions (all verified, in the v1.0.0 tag)
 - **Spreadsheet-style inline editing** in table view (double-click; Enter/blur/Tab/Esc; all simple
   field types + core columns) and a **slide-over edit pane** (`?edit=<id>`, full dynamic form).

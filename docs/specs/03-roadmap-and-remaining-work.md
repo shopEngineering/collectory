@@ -1,12 +1,29 @@
 # 03 — Roadmap & Remaining Work
 
-v1.0.0 is feature-complete per the design spec. Everything below is future work, ordered by
-expected value to the primary user. Each item: goal / approach / acceptance.
+**As of v1.0.7 (2026-07-21):** shipped, public, signed + notarized; a full four-part code/security
+review has been completed and its criticals+highs fixed. The near-term list below is largely done
+(struck where complete); the live remaining work is the **cloud-automation cert export**, the
+**myArmsCache maintenance/range import**, a **real-iPad test**, and the **deferred review backlog**.
+
+## Deferred review backlog (from the 2026-07-21 review — not yet done, prioritized)
+Full report: artifact + `scratchpad/review-{security,backend,frontend,data}.md` (session-local).
+1. **Keyboard-accessibility sweep** — menus mouse-only; table rows / grid cards / sort headers not
+   keyboard-operable; modals/palette/lightbox/edit-pane lack focus traps; rating "radiogroup"
+   children aren't radios. Goal: full keyboard operability + focus management. Medium-large effort.
+2. **List virtualization** — grid/table re-render fully on each keystroke/inline-edit at 500+ items.
+   Goal: virtualize + memoize rows. Only needed once a collection gets large.
+3. **multer 2.x** — 1.x is EOL (no active CVE). Breaking API change; upgrade carefully.
+4. **PIN KDF hardening** — unsalted SHA-256; add a per-install salt + iterations (handle migration of
+   existing PINs).
+5. **`--ink-4` text contrast** fails 4.5:1 in both themes — bump it. NOTE: `client/src/styles/
+   tokens.css` is access-restricted in the current build environment; needs a session with access.
+6. **Restore cookie-secret continuity** — after restore, cookieParser still uses the boot-time secret,
+   invalidating PIN cookies until restart. Low.
+7. **JSON export includes trashed items** while CSV excludes them — decide/align (arguably correct for
+   a full-fidelity backup dump).
 
 ## Near term (high value, low risk)
-1. **First GitHub release** — push repo to GitHub, tag `v1.0.0`, publish the draft release the
-   workflow creates. Acceptance: DMG downloads and opens via the documented Open-Anyway path on a
-   clean Mac. (Only step requiring the user's GitHub account.)
+1. ~~**First GitHub release**~~ — DONE. Repo public, releases signed + notarized, download page live.
 2. **Migration import of the uncle's real data** — run his myArmsCache CSV export and spreadsheets
    through `/import`; tune `suggestedMapping` fuzzy rules against his real headers. Acceptance:
    full inventory imported with photos re-attached, zero manual re-typing of data fields.

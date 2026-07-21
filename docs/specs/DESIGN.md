@@ -470,3 +470,36 @@ Fully responsive: sidebar → sheet/hamburger under 900px.
 | Money as integer cents; single currency setting | correctness | floats (rounding), multi-currency (YAGNI) |
 | Soft-delete Trash | collectors fear data loss | hard delete only |
 | Port 7117 fixed default, settable | memorable, uncommon | random port (breaks PWA bookmark) |
+
+## 11. Post-v1.0 spec deltas (through v1.0.7 — supersede the above where they conflict)
+
+- **Ammo quantity is stored SIGNED**, clamped to 0 only at display (ItemSummary, full item, low-stock
+  alert, ammo/item-choices). Log-sourced deltas reverse exactly; sorting uses the signed value.
+- **Ammo linkage guard:** the auto-usage-log (rule 2) fires only when the host item is NOT in an
+  ammunition collection and `ammo_item_id !== hostItemId` (no double-decrement, no self-reference).
+- **Magazines are NOT a top-level template.** They are child records of a firearm:
+  `GET/POST /api/items/:id/magazines`, `PATCH/DELETE /api/magazines/:id`; surfaced on the firearm's
+  detail page. `item_ref`/`item_refs` field types (+ `ammo_ref` sugar) with `refTemplate`;
+  `GET /api/item-choices`, `GET /api/items/:id/related`. Built-in Accessories & Parts templates.
+- **DELETE /api/collections/:id?force=true is a PERMANENT delete** (collection + items + cascaded
+  logs/photos/attachments) and unlinks the photo/attachment FILES from disk. It does NOT move items
+  to Trash (deleting a whole collection is deliberate; per-item delete still uses Trash). The UI
+  confirms with the item count + "cannot be undone."
+- **CSV import is type-aware:** cells coerce to the target field's type (multiselect/item_refs →
+  array, checkbox → boolean, number/currency/year/rating → number, item_ref → id); an explicitly
+  empty mapped cell CLEARS the field on update; a `core:id` belonging to a different collection errors
+  the row (no cross-collection duplicate). Import preview is called with `collectionId` so suggestions
+  match the collection's fields. No CSV formula-injection prefixing (would break the round-trip).
+- **Table sort:** `sort` accepts core keys, `status`, or `field:<key>` (dynamic field via
+  `json_extract`, numeric types cast to REAL; the key is a bound param).
+- **Security:** `trust proxy` is OFF; the LAN gate reads `req.socket.remoteAddress` (handles
+  `::1`/`::ffff:127.0.0.1`). All responses carry a Content-Security-Policy (self + inline for the
+  app's own theme/styles; `connect-src 'self'` blocks exfiltration), `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. Attachments serve as downloads; svg/html/xml
+  uploads are rejected. Malformed numeric input → 400; DB constraint violations → 409/400.
+- **Restore is crash-safe:** validate (db + `meta.json` with app id + `version`) BEFORE destroying;
+  auto-rollback from the pre-restore safety zip on any mid-swap failure.
+- **Packaging:** the DMG is code-signed separately from the app (else Gatekeeper blocks the download);
+  build signs both, notarizes, staples. `electron-builder.config.js` (JS) drives conditional
+  notarization; the release workflow skips unless ALL 5 signing+notarization secrets are set.
+  Migrations through `004_photos_indexes.sql`. adm-zip ≥ 0.6.0.
