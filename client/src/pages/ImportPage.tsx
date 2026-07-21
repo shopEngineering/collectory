@@ -161,7 +161,12 @@ export function ImportPage() {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await api.upload<ImportPreview>('/import/csv/preview', form);
+      // Pass the target collection so the server can suggest matches against its
+      // fields (without it, only core columns map and everything else is "skip").
+      const res = await api.upload<ImportPreview>(
+        `/import/csv/preview?collectionId=${collectionId}`,
+        form,
+      );
       setPreview(res);
       setMapping({ ...res.suggestedMapping });
       // fill any header missing from suggestedMapping with 'skip'
