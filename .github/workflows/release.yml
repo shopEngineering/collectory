@@ -1,6 +1,8 @@
 name: Release
 
 # Build and publish the macOS DMG/ZIP to GitHub Releases on every version tag.
+# Signs with a Developer ID cert and notarizes when the signing secrets are set;
+# if they are absent it skips cleanly (no unsigned "damaged" build ever ships).
 on:
   push:
     tags:
@@ -19,44 +21,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Refuse to publish an un-notarized release: without the signing cert,
-      # downloads would show "damaged" on Apple Silicon. Fail fast instead.
-      - name: Require signing secrets
+      - name: Check for signing secrets
+        id: signing
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
         run: |
-          if [ -z "$CSC_LINK" ]; then
-            echo "::error::Signing secrets not configured — refusing to publish an unsigned build. Add CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID as repo secrets."
-            exit 1
+          if [ -n "$CSC_LINK" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Signing secrets not configured — skipping the build so no unsigned release is published. Add CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID to enable automated signed releases."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up Node
+        if: steps.signing.outputs.ready == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      # node-gyp needs distutils if any native dep falls back to a source build
-      # (better-sqlite3 v12 has no Node 20 prebuilds; Node 22+ is covered, this is insurance).
       - name: Ensure Python setuptools for node-gyp
+        if: steps.signing.outputs.ready == 'true'
         run: python3 -m pip install --break-system-packages setuptools || pip3 install setuptools
 
       - name: Install root dependencies
+        if: steps.signing.outputs.ready == 'true'
         run: npm ci
 
       - name: Install client dependencies
+        if: steps.signing.outputs.ready == 'true'
         run: npm --prefix client ci
 
       - name: Build client
+        if: steps.signing.outputs.ready == 'true'
         run: npm run build
 
-      - name: Build and publish (electron-builder)
+      - name: Build, sign, notarize, publish (electron-builder)
+        if: steps.signing.outputs.ready == 'true'
         run: npx electron-builder --mac --arm64 --x64 --config electron-builder.config.js --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Code signing (Developer ID Application cert, base64) + notarization.
-          # When these secrets are unset the build stays signed-or-unsigned and
-          # skips notarization instead of failing (see electron-builder.config.js).
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
