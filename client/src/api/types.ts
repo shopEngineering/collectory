@@ -339,7 +339,7 @@ export interface Settings {
 export interface ImportPreview {
   token: string;
   headers: string[];
-  sampleRows: string[][];
+  sampleRows: Record<string, string>[]; // parsed rows keyed by header
   suggestedMapping: Record<string, string>; // header -> target
 }
 

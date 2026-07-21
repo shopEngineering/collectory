@@ -77,3 +77,32 @@ test('CSV import new:<type> creates a field def and value', async (t) => {
   const item = (await request(app).get(`/api/items/${list.body.items[0].id}`)).body;
   assert.strictEqual(item.fields[created.key], 'hello world');
 });
+
+test('myArmsCache-style import: empty column does not clobber name; nameless rows and comma quantities import', async (t) => {
+  const { app, dataDir, ctx } = freshApp();
+  cleanup(t, dataDir, ctx);
+
+  // Firearms export style: "Name" populated, "Item #" empty. The empty Item #
+  // must not be suggested as core:name, and must not overwrite the real Name.
+  const guns = (await request(app).post('/api/collections').send({ name: 'Firearms', templateKey: 'firearms' })).body;
+  const gunCsv = 'Name,Item #,Manufacturer,Serial #\r\n"Lemon Squeezer",,Smith & Wesson,179968\r\n';
+  const gp = await request(app).post(`/api/import/csv/preview?collectionId=${guns.id}`).attach('file', Buffer.from(gunCsv), 'guns.csv');
+  assert.strictEqual(gp.body.suggestedMapping['Name'], 'core:name');
+  assert.notStrictEqual(gp.body.suggestedMapping['Item #'], 'core:name', 'Item # must not also claim name');
+  const gc = await request(app).post('/api/import/csv/commit').send({ token: gp.body.token, collectionId: guns.id, mapping: gp.body.suggestedMapping });
+  assert.strictEqual(gc.body.imported, 1);
+  assert.strictEqual(gc.body.skipped, 0);
+  const gItems = (await request(app).get(`/api/collections/${guns.id}/items`)).body.items;
+  assert.strictEqual(gItems[0].name, 'Lemon Squeezer', 'real name kept, not clobbered by empty Item #');
+
+  // Ammo export style: no Name value; quantity has a thousands comma.
+  const ammo = (await request(app).post('/api/collections').send({ name: 'Ammo', templateKey: 'ammunition' })).body;
+  const ammoCsv = 'Caliber,Manufacturer,Name,Rounds Purchased\r\n.22 LR,Federal,,"1,625"\r\n';
+  const ap = await request(app).post(`/api/import/csv/preview?collectionId=${ammo.id}`).attach('file', Buffer.from(ammoCsv), 'ammo.csv');
+  const ac = await request(app).post('/api/import/csv/commit').send({ token: ap.body.token, collectionId: ammo.id, mapping: ap.body.suggestedMapping });
+  assert.strictEqual(ac.body.imported, 1, 'nameless ammo row still imports');
+  assert.strictEqual(ac.body.errors.length, 0, 'thousands-comma quantity does not error');
+  const aItems = (await request(app).get(`/api/collections/${ammo.id}/items`)).body.items;
+  assert.match(aItems[0].name, /Federal|\.22 LR/, 'name derived from manufacturer/caliber');
+  assert.strictEqual(aItems[0].quantity, 1625, 'thousands comma parsed to 1625');
+});

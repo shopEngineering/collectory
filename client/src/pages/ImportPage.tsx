@@ -277,11 +277,11 @@ export function ImportPage() {
                 </tr>
               </thead>
               <tbody>
-                {preview.headers.map((header, colIdx) => (
+                {preview.headers.map((header) => (
                   <MappingRow
                     key={header}
                     header={header}
-                    samples={preview.sampleRows.map((row) => row[colIdx] ?? '')}
+                    samples={preview.sampleRows.map((row) => row[header] ?? '')}
                     target={mapping[header] ?? 'skip'}
                     fieldOptions={fieldOptions}
                     onChange={(target) => setMapping((prev) => ({ ...prev, [header]: target }))}

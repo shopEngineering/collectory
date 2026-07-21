@@ -29,6 +29,11 @@ function dollarsToCents(str) {
   if (!Number.isFinite(n)) return null;
   return Math.round(n * 100);
 }
+// Parse a numeric cell, tolerating thousands separators ("1,625"); non-numeric → fallback.
+function toNumber(str, fallback) {
+  const n = Number(String(str).replace(/[,\s]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
 
 // Build CSV string for a collection: core columns + one per field_def + tags.
 function exportCollection(db, collectionId) {
@@ -88,8 +93,8 @@ function suggestMapping(headers, fieldDefs) {
     'core:acquiredDate': ['acquireddate', 'date', 'purchasedate', 'dateacquired'],
     'core:acquiredFrom': ['acquiredfrom', 'source', 'dealer', 'seller', 'vendor'],
     'core:minQuantity': ['minquantity', 'minqty', 'lowstock', 'reorder'],
-    'core:quantity': ['quantity', 'qty', 'count', 'rounds'],
-    'core:name': ['name', 'title', 'description', 'item'],
+    'core:quantity': ['quantity', 'qty', 'count', 'roundspurchased', 'rounds'],
+    'core:name': ['name', 'title', 'description'],
   };
   for (const t of coreTargets) {
     if (coreAliases[t.target]) t.norms.push(...coreAliases[t.target].map(norm));
@@ -98,6 +103,12 @@ function suggestMapping(headers, fieldDefs) {
   const all = [...coreTargets, ...fieldTargets];
 
   const mapping = {};
+  // A single-value core target (name, quantity, price…) must not be claimed by two
+  // columns — the second would overwrite the first. Once used, exclude it from later
+  // candidates so the next column falls back to its own best match or skip.
+  const usedCore = new Set();
+  const singleUseCore = (t) => t.startsWith('core:') && t !== 'core:tags';
+
   for (const header of headers) {
     const hn = norm(header);
     // Explicit "field:key" headers from our own export map directly.
@@ -106,11 +117,13 @@ function suggestMapping(headers, fieldDefs) {
       continue;
     }
     if (hn === 'tags') {
-      mapping[header] = 'skip'; // tags handled separately below via header name
+      mapping[header] = 'core:tags';
+      continue;
     }
     let best = 'skip';
     let bestScore = 0;
     for (const cand of all) {
+      if (singleUseCore(cand.target) && usedCore.has(cand.target)) continue;
       for (const nrm of cand.norms) {
         if (!nrm) continue;
         let score = 0;
@@ -122,15 +135,38 @@ function suggestMapping(headers, fieldDefs) {
         }
       }
     }
-    // Map a "tags" header to a synthetic tags target
-    if (hn === 'tags') best = 'core:tags';
-    mapping[header] = bestScore > 0 || best === 'core:tags' ? best : 'skip';
+    const chosen = bestScore > 0 ? best : 'skip';
+    if (singleUseCore(chosen)) usedCore.add(chosen);
+    mapping[header] = chosen;
   }
   return mapping;
 }
 
 // Commit an import. mapping: {header: 'core:<name>'|'field:<key>'|'new:<type>'|'skip'|'core:tags'}
 // Rows whose mapped core:id matches an existing item UPDATE it; else INSERT.
+// Build a readable item name from the most identifying imported fields, for rows
+// whose source has no Name column (e.g. ammunition).
+const NAME_FIELD_PRIORITY = [
+  'manufacturer', 'maker', 'brand', 'model', 'denomination', 'series',
+  'cartridge', 'caliber', 'part_type', 'category', 'country', 'scott_number', 'year',
+];
+function deriveName(fields) {
+  const parts = [];
+  for (const k of NAME_FIELD_PRIORITY) {
+    const v = fields[k];
+    if (v != null && String(v).trim() !== '') {
+      parts.push(String(v).trim());
+      if (parts.length >= 3) break;
+    }
+  }
+  if (parts.length === 0) {
+    for (const v of Object.values(fields)) {
+      if (v != null && String(v).trim() !== '') { parts.push(String(v).trim()); break; }
+    }
+  }
+  return parts.join(' ').slice(0, 120).trim();
+}
+
 function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) {
   const result = { imported: 0, skipped: 0, errors: [] };
   const now = new Date().toISOString();
@@ -160,17 +196,37 @@ function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) 
         } else if (target === 'core:tags') {
           tags = String(value || '').split(/[;,]/).map((s) => s.trim()).filter(Boolean);
         } else if (target.startsWith('core:')) {
-          core[target.slice('core:'.length)] = value;
+          // Don't let a later empty column clobber a value already set (e.g. an
+          // empty "Item #" over a real "Name"); first non-empty value wins.
+          const k = target.slice('core:'.length);
+          const curEmpty = core[k] == null || String(core[k]).trim() === '';
+          const valEmpty = value == null || String(value).trim() === '';
+          if (core[k] === undefined || (curEmpty && !valEmpty)) core[k] = value;
         } else if (target.startsWith('field:')) {
           const key = target.slice('field:'.length);
           if (value != null && String(value).trim() !== '') fields[key] = value;
         }
       }
 
-      if ((core.name == null || String(core.name).trim() === '') && providedId == null) {
+      // Rows without a mapped Name (common in myArmsCache ammo, which is identified
+      // by caliber + manufacturer) get a name derived from their most identifying
+      // fields instead of being dropped.
+      const nameEmpty = () => core.name == null || String(core.name).trim() === '';
+      if (nameEmpty()) {
+        const derived = deriveName(fields);
+        if (derived) core.name = derived;
+      }
+      const hasData =
+        !nameEmpty() ||
+        Object.keys(fields).length > 0 ||
+        (tags && tags.length > 0) ||
+        Object.keys(core).some((k) => k !== 'name' && core[k] != null && String(core[k]).trim() !== '');
+      if (!hasData && providedId == null) {
+        // genuinely empty row — nothing to import
         result.skipped++;
         return;
       }
+      if (nameEmpty()) core.name = 'Unnamed';
 
       const coreCols = mapCoreForDb(core, now);
 
@@ -204,7 +260,7 @@ function commitImport(db, collectionId, headers, rows, mapping, ensureFieldDef) 
           collection_id: collectionId,
           name: coreCols.name != null ? coreCols.name : 'Unnamed',
           status: coreCols.status || 'owned',
-          quantity: coreCols.quantity != null ? coreCols.quantity : 1,
+          quantity: Number.isFinite(coreCols.quantity) ? coreCols.quantity : 1,
           min_quantity: coreCols.min_quantity != null ? coreCols.min_quantity : null,
           acquired_date: coreCols.acquired_date || null,
           acquired_price_cents: coreCols.acquired_price_cents != null ? coreCols.acquired_price_cents : null,
@@ -233,8 +289,8 @@ function mapCoreForDb(core, now) {
   const out = {};
   if (core.name !== undefined) out.name = core.name != null ? String(core.name) : null;
   if (core.status !== undefined && core.status) out.status = String(core.status);
-  if (core.quantity !== undefined && core.quantity !== '') out.quantity = Number(core.quantity);
-  if (core.minQuantity !== undefined) out.min_quantity = core.minQuantity === '' ? null : Number(core.minQuantity);
+  if (core.quantity !== undefined && String(core.quantity).trim() !== '') out.quantity = toNumber(core.quantity, 1);
+  if (core.minQuantity !== undefined) out.min_quantity = String(core.minQuantity).trim() === '' ? null : toNumber(core.minQuantity, null);
   if (core.acquiredDate !== undefined) out.acquired_date = core.acquiredDate || null;
   if (core.acquiredPrice !== undefined) out.acquired_price_cents = dollarsToCents(core.acquiredPrice);
   if (core.acquiredFrom !== undefined) out.acquired_from = core.acquiredFrom || null;
